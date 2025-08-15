@@ -1,8 +1,8 @@
-/* memory map */
+/* memory map for GD32F470VIT */
 MEMORY
 {
-FLASH (rx)      : ORIGIN = $(flashOrigin), LENGTH = $(flashLength)K
-RAM (xrw)       : ORIGIN = $(ramOrigin), LENGTH = $(ramLength)K
+FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 3072K
+RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 512K
 TCMRAM   (xrw): ORIGIN = 0x10000000, LENGTH = 64K
 }
 
