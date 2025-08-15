@@ -6,7 +6,7 @@
 # Generic Makefile (based on gcc)
 #
 # ChangeLog :
-#	2022-12-01 - update for GD32F427
+#	2022-12-01 - update for GD32F470
 #	2017-02-10 - Several enhancements + project update mode
 #   2015-07-22 - first version
 # ------------------------------------------------
@@ -133,7 +133,7 @@ AS_DEFS =
 C_DEFS =  \
 -DUSE_STDPERIPH_DRIVER \
 -DGD32F4xx \
--DGD32F427
+-DGD32F470
 
 
 # AS includes
