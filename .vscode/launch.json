@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceFolder}/build/gd32f4xx_project.elf",
+            "name": "Debug GD32",
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "openocd",
+            "armToolchainPath": "/usr/bin/",
+            "configFiles":[
+                "cmsis-dap.cfg",
+                "gd32f4xx.cfg"
+            ],
+        },
+    ]
+}
+// cmsis-dap.cfg (在此使用cmsis-dap，如果使用jlink将配置文件换成jlink的即可)
+// gd32f4xx.cfg (在此我使用平台是基于GD32F4系列，与STM32F4系列相同操作)

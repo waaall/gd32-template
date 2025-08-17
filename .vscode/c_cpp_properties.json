@@ -1,0 +1,46 @@
+{
+    "configurations": [
+        {
+            "name": "GD32",
+            // 指定ARM GCC编译器路径
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            // 指定C标准
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            // 指定IntelliSense模式
+            "intelliSenseMode": "gcc-arm",
+            // 编译定义，从Makefile的C_DEFS复制
+            "defines": [
+                "USE_STDPERIPH_DRIVER",
+                "GD32F4xx", 
+                "GD32F470",
+                "__weak=__attribute__((weak))",
+                "__packed=__attribute__((__packed__))"
+            ],
+            "includePath": [
+                // 工程代码的头文件
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/Core/inc",
+                "${workspaceFolder}/Drivers/CMSIS",
+                "${workspaceFolder}/Drivers/CMSIS/GD/GD32F4xx/Include",
+                "${workspaceFolder}/Drivers/GD32F4xx_standard_peripheral/Include",
+                // ARM GCC系统头文件路径
+                "/usr/share/arm-gcc/arm-none-eabi/include"
+            ],
+            // 编译器参数，从Makefile的CFLAGS复制
+            "compilerArgs": [
+                // makefile中的CFLAGS
+                "-mcpu=cortex-m4",
+                "-mthumb",
+                "-mfpu=fpv4-sp-d16",
+                "-mfloat-abi=hard",
+                "-fdata-sections",
+                "-ffunction-sections",
+                "-Wall",
+                "-g",
+                "-gdwarf-2"
+            ]
+        }
+    ],
+    "version": 4
+}
