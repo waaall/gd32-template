@@ -51,9 +51,9 @@ void led_spark(void)
     if(timingdelaylocal) {
 
         if(timingdelaylocal < 500U) {
-            gd_eval_led_on(LED1);
+            gd_eval_led_on(LED2);
         } else {
-            gd_eval_led_off(LED1);
+            gd_eval_led_off(LED2);
         }
 
         timingdelaylocal--;
@@ -75,6 +75,9 @@ int main(void)
 #endif
 
     gd_eval_led_init(LED1);
+    gd_eval_led_off(LED1);
+    gd_eval_led_init(LED2);
+    gd_eval_led_on(LED2);
     systick_config();
 
 #ifdef __FIRMWARE_VERSION_DEFINE
@@ -84,6 +87,10 @@ int main(void)
 #endif /* __FIRMWARE_VERSION_DEFINE */
 
     while(1) {
+        /* toggle LEDs */
+        gd_eval_led_toggle(LED1);
+        gd_eval_led_toggle(LED2);
+        delay_1ms(1000);
     }
 }
 
