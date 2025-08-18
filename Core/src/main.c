@@ -74,10 +74,8 @@ int main(void)
     uint32_t fw_ver = 0;
 #endif
 
-    gd_eval_led_init(LED1);
-    gd_eval_led_off(LED1);
     gd_eval_led_init(LED2);
-    gd_eval_led_on(LED2);
+    gd_eval_led_off(LED2);
     systick_config();
 
 #ifdef __FIRMWARE_VERSION_DEFINE
@@ -88,9 +86,8 @@ int main(void)
 
     while(1) {
         /* toggle LEDs */
-        gd_eval_led_toggle(LED1);
         gd_eval_led_toggle(LED2);
-        delay_1ms(1000);
+        delay_1ms(500);
     }
 }
 

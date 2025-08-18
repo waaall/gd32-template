@@ -5,6 +5,7 @@
 ## 项目概述
 
 本项目为GD32F470VIT微控制器提供了完整的开发环境，包括：
+
 - 自动化的Makefile生成系统
 - 完整的GD32F4xx标准外设库
 - CMSIS库支持
@@ -49,40 +50,52 @@ try-gd32-mac/
 ## 环境要求
 
 ### 必需工具
+
 - **ARM GNU Toolchain**: arm-none-eabi-gcc工具链
 - **Make**: GNU Make构建工具
 - **Python 3**: 用于运行Makefile生成脚本
-- **OpenOCD** (可选): 用于调试和烧录
+- **OpenOCD** (可选pyocd): 用于调试和烧录
 
-### macOS安装示例
+#### 注：
+
+1. windows 用软件GD32EmbeddedBuilder的openocd
+
 ```bash
-# 安装ARM工具链
-brew install --cask gcc-arm-embedded
-
-# 安装OpenOCD (可选)
-brew install openocd
-
-# 验证安装
-arm-none-eabi-gcc --version
-make --version
-python3 --version
+\\GD32EmbeddedBuilder_***\\Tools\\OpenOCD\\
 ```
 
-## 快速开始
+2. mac 和 linux 建议用pyocd : `pip install pyocd`;也可以用openocd,但需要一些trick: 改名字（gd32f4xx.ctg改为stm32f4xx.ctg）里面_CHIPNAME和_TARGETNAME改了就可以了:
+
+```bash
+openocd -f cmsis-dap.cfg -f stm32f4xx.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase build/gd32f4xx_project.elf" -c reset -c shutdown
+```
+
+具体依赖安装步骤参见我的笔记：
+
+```text
+https://github.com/waaall/EmbeddedTech/blob/main/stm32-develop.md
+```
+
+
+## 开始
 
 ### 1. 克隆项目
+
 ```bash
 git clone <your-repo-url>
-cd try-gd32-mac
+ls
+cd ***
 ```
 
 ### 2. 生成Makefile
+
 ```bash
 # 运行自动生成脚本
 python3 scripts/create_makefile.py
 ```
 
 ### 3. 编译项目
+
 ```bash
 # 编译项目
 make
@@ -92,7 +105,9 @@ make clean
 ```
 
 ### 4. 编译输出
-编译成功后，在`build/`目录下会生成：
+
+编译成功后，在 `build/`目录下会生成：
+
 - `gd32f4xx_project.elf` - ELF可执行文件
 - `gd32f4xx_project.hex` - Intel HEX格式文件
 - `gd32f4xx_project.bin` - 二进制文件
@@ -105,21 +120,23 @@ make clean
 本项目使用Python脚本自动生成Makefile，流程如下：
 
 1. **扫描项目目录**: 递归扫描所有子目录
-2. **收集源文件**: 自动发现所有`.c`源文件
-3. **收集汇编文件**: 自动发现`.s`和`.S`汇编文件
-4. **收集头文件目录**: 自动发现所有包含`.h`文件的目录
-5. **收集链接脚本**: 自动发现`.ld`链接脚本
+2. **收集源文件**: 自动发现所有 `.c`源文件
+3. **收集汇编文件**: 自动发现 `.s`和 `.S`汇编文件
+4. **收集头文件目录**: 自动发现所有包含 `.h`文件的目录
+5. **收集链接脚本**: 自动发现 `.ld`链接脚本
 6. **生成Makefile**: 基于模板替换生成最终Makefile
 
 ### 关键脚本说明
 
 #### `scripts/create_makefile.py`
+
 - **功能**: 自动扫描项目并生成Makefile
 - **输入**: `scripts/template.makefile` (模板)
 - **输出**: `./Makefile` (最终Makefile)
 - **使用**: `python3 scripts/create_makefile.py`
 
 #### `scripts/template.makefile`
+
 - **功能**: Makefile模板文件，包含占位符
 - **占位符**:
   - `@@C_SOURCES@@` - C源文件列表
@@ -131,6 +148,7 @@ make clean
 ## 内存配置
 
 ### GD32F470VIT内存映射
+
 ```
 Flash:   0x08000000 - 3072KB (3MB)
 SRAM:    0x20000000 - 512KB  
@@ -138,30 +156,38 @@ TCM RAM: 0x10000000 - 64KB
 ```
 
 ### 内存使用情况
+
 编译后会显示内存使用统计：
+
 ```
    text    data     bss     dec     hex filename
    5932     108    3444    9484    250c build/gd32f4xx_project.elf
 ```
+
 - **text**: 程序代码大小
 - **data**: 初始化数据大小
 - **bss**: 未初始化数据大小
 
 ## 调试和烧录
 
-### 使用OpenOCD
-```bash
-# 连接目标板
-openocd -f cmsis-dap.cfg -f gd32f4xx.cfg
+### 使用pyocd
 
-# 在另一个终端中使用GDB
-arm-none-eabi-gdb build/gd32f4xx_project.elf
-(gdb) target remote localhost:3333
-(gdb) load
-(gdb) continue
+```bash
+pyocd pack update
+pyocd pack find gd32f4
+pyocd pack install GD32F470VI
+pyocd flash --erase chip --target GD32F470VI build/gd32f4xx_project.elf
+
+```
+
+### 使用OpenOCD
+
+```bash
+openocd -f cmsis-dap.cfg -f gd32f4xx.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase build/gd32f4xx_project.elf" -c reset -c shutdown
 ```
 
 ### 配置文件说明
+
 - `cmsis-dap.cfg`: CMSIS-DAP调试器配置
 - `gd32f4xx.cfg`: GD32F4xx目标配置
 - `openocd_gdlink.cfg`: GDLink调试器配置
@@ -169,12 +195,14 @@ arm-none-eabi-gdb build/gd32f4xx_project.elf
 ## 开发流程
 
 ### 添加新文件
-1. 将`.c`文件放入适当目录
-2. 将`.h`文件放入对应的`inc`目录
-3. 重新运行`python3 scripts/create_makefile.py`
-4. 运行`make`编译
+
+1. 将 `.c`文件放入适当目录
+2. 将 `.h`文件放入对应的 `inc`目录
+3. 重新运行 `python3 scripts/create_makefile.py`
+4. 运行 `make`编译
 
 ### 修改代码后更新
+
 ```bash
 # 重新生成Makefile (如果添加了新文件)
 python3 scripts/create_makefile.py
@@ -187,6 +215,7 @@ make
 ```
 
 ### 清理和重新编译
+
 ```bash
 # 清理编译输出
 make clean
@@ -200,10 +229,12 @@ make
 项目包含VS Code任务配置：
 
 ### 可用任务
+
 - **build**: 编译项目 (`make`)
 - **download**: 烧录到目标板 (使用OpenOCD)
 
 ### 使用方法
+
 1. 打开VS Code
 2. `Ctrl+Shift+P` -> `Tasks: Run Task`
 3. 选择相应任务
@@ -211,15 +242,18 @@ make
 ## 常见问题
 
 ### 编译错误
+
 1. **工具链未找到**: 确保ARM工具链在PATH中
 2. **Python脚本错误**: 确保使用Python 3
 3. **链接错误**: 检查链接脚本内存配置
 
 ### 内存不足
-- 检查`.map`文件了解内存使用情况
+
+- 检查 `.map`文件了解内存使用情况
 - 优化代码或调整链接脚本
 
 ### 调试问题
+
 - 确保OpenOCD正确配置
 - 检查调试器连接
 - 验证目标板电源
