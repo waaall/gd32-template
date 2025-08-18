@@ -177,8 +177,14 @@ pyocd pack update
 pyocd pack find gd32f4
 pyocd pack install GD32F470VI
 pyocd flash --erase chip --target GD32F470VI build/gd32f4xx_project.elf
-
 ```
+
+#### pyocd pack install location
+
+- Linux: $HOME/.local/share/cmsis-pack-manager
+- Mac: $HOME/Library/Application Support/cmsis-pack-manager
+- Windows: 'C:\\Users\\$USER\\AppData\\cmsis-pack-manager'
+
 
 ### 使用OpenOCD
 
@@ -240,6 +246,29 @@ make
 3. 选择相应任务
 
 ## 常见问题
+
+### 烧录问题
+
+#### pyocd xml error
+
+问题：pyocd报错xml，因为svd文件头多了两个空格
+```bash
+➜  3.0.3-new ls
+3.0.3.pack
+➜  3.0.3-new mv 3.0.3.pack 3.0.3.zip  
+➜  3.0.3-new ls
+3.0.3  3.0.3.zip
+➜  3.0.3-new cd 3.0.3    
+➜  3.0.3 ls
+Device  Flash  GigaDevice.GD32F4xx_DFP.pdsc  SVD
+➜  3.0.3 cd SVD    
+➜  SVD ls
+GD32F403.SFR  GD32F403.svd  GD32F4xx.SFR  GD32F4xx.svd
+➜  SVD sudo vim GD32F4xx.svd
+
+# vim进入insert模式删了开头两个空格后 Esc :wq! 保存，再压缩成zip，重命名.pack
+```
+
 
 ### 编译错误
 
