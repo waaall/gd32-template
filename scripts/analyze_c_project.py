@@ -439,7 +439,7 @@ class CProjectAnalyzer:
 
 def main() -> None:
     # 当前目录作为项目根目录, 支持相对路径和绝对路径, 也可以传入其他路径如 "../other_project" 等
-    project_root = "."  
+    project_root = ".."  
     extend_lib_paths = [
         # "/path/to/external/library1",
         # "/path/to/external/library2"
