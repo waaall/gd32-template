@@ -1,6 +1,7 @@
 # vscode profiles
 .vscode/
 .idea/
+dependency_graph.md
 
 # os file
 .DS_Store
