@@ -76,7 +76,6 @@ openocd -f cmsis-dap.cfg -f stm32f4xx.cfg -c init -c "reset halt" -c "wait_halt"
 https://github.com/waaall/EmbeddedTech/blob/main/stm32-develop.md
 ```
 
-
 ## 开始
 
 ### 1. 克隆项目
@@ -185,7 +184,6 @@ pyocd flash --erase chip --target GD32F470VI build/gd32f4xx_project.elf
 - Mac: $HOME/Library/Application Support/cmsis-pack-manager
 - Windows: 'C:\\Users\\$USER\\AppData\\cmsis-pack-manager'
 
-
 ### 使用OpenOCD
 
 ```bash
@@ -252,23 +250,23 @@ make
 #### pyocd xml error
 
 问题：pyocd报错xml，因为svd文件头多了两个空格
+
 ```bash
 ➜  3.0.3-new ls
 3.0.3.pack
 ➜  3.0.3-new mv 3.0.3.pack 3.0.3.zip  
 ➜  3.0.3-new ls
 3.0.3  3.0.3.zip
-➜  3.0.3-new cd 3.0.3    
+➜  3.0.3-new cd 3.0.3  
 ➜  3.0.3 ls
 Device  Flash  GigaDevice.GD32F4xx_DFP.pdsc  SVD
-➜  3.0.3 cd SVD    
+➜  3.0.3 cd SVD  
 ➜  SVD ls
 GD32F403.SFR  GD32F403.svd  GD32F4xx.SFR  GD32F4xx.svd
 ➜  SVD sudo vim GD32F4xx.svd
 
 # vim进入insert模式删了开头两个空格后 Esc :wq! 保存，再压缩成zip，重命名.pack
 ```
-
 
 ### 编译错误
 
@@ -287,13 +285,6 @@ GD32F403.SFR  GD32F403.svd  GD32F4xx.SFR  GD32F4xx.svd
 - 检查调试器连接
 - 验证目标板电源
 
-## 许可证
-
-基于GD32F4xx官方示例代码修改，遵循GD32相关许可协议。
-
-## 贡献
-
-欢迎提交Issue和Pull Request来改进这个项目！
 
 ---
 
