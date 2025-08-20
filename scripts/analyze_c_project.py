@@ -33,13 +33,18 @@ C/C++项目依赖关系分析 (C/C++ Project Dependency Analyzer)
     1. 命令行调用(分析当前目录):
        python analyze_c_project.py
        
-    2. 程序调用:
+    2. 命令行调用(分析指定目录):
+       python analyze_c_project.py /path/to/project
+       python analyze_c_project.py ../other_project
+       python analyze_c_project.py .
+       
+    3. 程序调用:
        analyzer = CProjectAnalyzer("./project_path")
        analyzer.buildSourceIncludeMaps()
        analyzer.analyzeDependencies()
        analyzer.generateDetailedReport()
 
-    3. 指定入口文件:
+    4. 指定入口文件:
        analyzer.analyzeDependencies(entry_files=["main.c", "app.c"])
 
 注意事项:
@@ -84,7 +89,7 @@ class CProjectAnalyzer:
     def __init__(self, project_root: str, extend_lib_paths: Optional[List[str]] = None) -> None:
         self.project_root = Path(project_root).resolve()
         self.extend_lib_paths = [Path(p).resolve() for p in (extend_lib_paths or [])]
-        
+
         # 类型注解的实例变量
         self.all_files: Set[Path] = set()
         self.used_files: Set[Path] = set()
@@ -125,7 +130,7 @@ class CProjectAnalyzer:
         source_extensions = {'.c', '.cpp', '.cc', '.cxx'}
         c_extensions = include_extensions | source_extensions
         for root, dirs, files in os.walk(search_dir):
-            root_path = Path(root)
+            root_path = Path(root).resolve()  # 标准化路径
             has_headers = False
             
             # 在单次遍历中处理所有文件
@@ -135,7 +140,7 @@ class CProjectAnalyzer:
                 # 不是c/c++相关文件, 跳过
                 if file_ext not in c_extensions:
                     continue
-                full_path = root_path / file
+                full_path = (root_path / file).resolve()  # 标准化路径
                 self.all_files.add(full_path)
                 if file_ext in include_extensions:
                     has_headers = True
@@ -148,7 +153,7 @@ class CProjectAnalyzer:
                         other_ext = Path(other_file).suffix.lower()
                         if (other_ext in source_extensions and 
                             Path(other_file).stem == base_name):
-                            source_path = root_path / other_file
+                            source_path = (root_path / other_file).resolve()  # 标准化路径
                             self.source_map[full_path] = source_path
                             self.include_map[source_path] = full_path
                             found_source = True
@@ -158,20 +163,20 @@ class CProjectAnalyzer:
                     if not found_source:
                         parent_dir = root_path.parent
                         potential_src_dirs = ['src', 'srcs', 'source', 'sources']
-                        
-                        for src_dir_name in potential_src_dirs:
-                            src_dir = parent_dir / src_dir_name
-                            if src_dir.exists() and src_dir.is_dir():
-                                for src_file in src_dir.iterdir():
+
+                        # 遍历parent_dir内的所有文件夹，用.lower()比对, 避免有部分大写
+                        for item in parent_dir.iterdir():
+                            if item.is_dir() and item.name.lower() in potential_src_dirs:
+                                for src_file in item.iterdir():
                                     if (src_file.is_file() and 
                                         src_file.suffix.lower() in source_extensions and
                                         src_file.stem == base_name):
-                                        self.source_map[full_path] = src_file
-                                        self.include_map[src_file] = full_path
+                                        self.source_map[full_path] = src_file.resolve()  # 标准化路径
+                                        self.include_map[src_file.resolve()] = full_path  # 标准化路径
                                         found_source = True
                                         break
-                            if found_source:
-                                break
+                                if found_source:
+                                    break
             
             # 在遍历完当前目录的所有文件后, 添加到include搜索路径
             if has_headers:
@@ -321,13 +326,13 @@ class CProjectAnalyzer:
         # 首先尝试相对于当前文件的目录
         candidate = current_dir / include
         if candidate.exists():
-            return candidate
+            return candidate.resolve()  # 标准化路径
             
         # 然后在include搜索路径中查找
         for search_path in self.include_paths:
             candidate = search_path / include
             if candidate.exists():
-                return candidate
+                return candidate.resolve()  # 标准化路径
 
         return None
 
@@ -438,20 +443,35 @@ class CProjectAnalyzer:
 
 
 def main() -> None:
-    # 当前目录作为项目根目录, 支持相对路径和绝对路径, 也可以传入其他路径如 "../other_project" 等
-    project_root = ".."  
+    import sys
+    
+    # 解析命令行参数
+    if len(sys.argv) > 1:
+        project_root = sys.argv[1]
+        logger.info(f"使用命令行指定的项目路径: {project_root}")
+    else:
+        # 默认使用当前目录
+        project_root = "."
+        logger.info("使用当前目录作为项目根目录")
+    
     extend_lib_paths = [
         # "/path/to/external/library1",
         # "/path/to/external/library2"
     ]
-    analyzer = CProjectAnalyzer(project_root, extend_lib_paths)
-    analyzer.buildSourceIncludeMaps()
-    # analyzer.parseProject()
-    entry_files: List[Path] = [
-        # 可以在这里添加特定的入口文件
-    ]
-    analyzer.analyzeDependencies(entry_files=entry_files if entry_files else None)
-    analyzer.generateDetailedReport()
+    
+    try:
+        analyzer = CProjectAnalyzer(project_root, extend_lib_paths)
+        analyzer.buildSourceIncludeMaps()
+        # analyzer.parseProject()
+        entry_files: List[Path] = [
+            # 可以在这里添加特定的入口文件
+        ]
+        analyzer.analyzeDependencies(entry_files=entry_files if entry_files else None)
+        analyzer.generateDetailedReport()
+        logger.info("分析完成!")
+    except Exception as e:
+        logger.error(f"分析过程中出错: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
