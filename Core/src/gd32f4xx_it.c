@@ -150,8 +150,17 @@ void DebugMon_Handler(void)
     \param[out] none
     \retval     none
 */
-void SysTick_Handler(void)
-{
-    led_spark();
-    delay_decrement();
+
+//导入 FreeRTOS 头文件
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern void xPortSysTickHandler(void);
+
+//滴答定时器的回调函数，给freertos提供时基 //注释掉
+void SysTick_Handler(void){
+	if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)//系统已经运行
+	{
+		xPortSysTickHandler();
+	}
 }

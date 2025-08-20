@@ -87,8 +87,7 @@ C_SOURCES +=  \
 ./Drivers/FreeRTOS/source/stream_buffer.c \
 ./Drivers/FreeRTOS/source/tasks.c \
 ./Drivers/FreeRTOS/source/timers.c \
-./Drivers/FreeRTOS/CMSIS_RTOS_V2/cmsis_os2.c \
-./Drivers/FreeRTOS/source/portable/MemMang/heap_4.c \
+./Drivers/FreeRTOS/portable/MemMang/heap_4.c \
 ./Drivers/FreeRTOS/portable/GCC/ARM_CM4F/port.c
 
 # ASM sources - 由create_makefile.py脚本自动扫描生成所有.s文件路径
@@ -156,7 +155,6 @@ C_INCLUDES +=  \
 -I./Drivers/GD32F4xx_standard_peripheral/Include \
 -I./Core/inc \
 -I./Drivers/FreeRTOS/include \
--I./Drivers/FreeRTOS/CMSIS_RTOS_V2 \
 -I./Drivers/FreeRTOS/portable/GCC/ARM_CM4F
 
 # compile gcc flags
