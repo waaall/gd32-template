@@ -34,6 +34,19 @@ OF SUCH DAMAGE.
 
 #include "gd32f4xx.h"
 #include "systick.h"
+//导入 FreeRTOS 头文件
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern void xPortSysTickHandler(void);
+
+//滴答定时器的回调函数，给freertos提供时基
+void SysTick_Handler(void){
+	if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)//系统已经运行
+	{
+		xPortSysTickHandler();
+	}
+}
 
 volatile static uint32_t delay;
 

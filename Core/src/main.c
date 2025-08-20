@@ -1,111 +1,115 @@
-/*!
-    \file    main.c
-    \brief   led spark with systick
+/***************************************************************************//**
+  file: main.c
+  author: zhengxu
+  version: V1.0.0
+  date: 20250820
 
-    \version 2024-12-20, V3.3.1, firmware for GD32F4xx
-*/
-
-/*
-    Copyright (c) 2024, GigaDevice Semiconductor Inc.
-
-    Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-    1. Redistributions of source code must retain the above copyright notice, this
-       list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
-    3. Neither the name of the copyright holder nor the names of its contributors
-       may be used to endorse or promote products derived from this software without
-       specific prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
-OF SUCH DAMAGE.
-*/
-
+*******************************************************************************/
+//gd32
 #include "gd32f4xx.h"
+#include "myboard.h"
 #include "systick.h"
-#include <stdio.h>
-#include "main.h"
-#include "gd32f450i_eval.h"
+
+//freeRTOS
+#include "FreeRTOS.h"
+#include "task.h"
+
+
+//任务优先级
+#define START_TASK_PRIO		1
+//任务堆栈大小	
+#define START_STK_SIZE 		128  
+//任务句柄
+TaskHandle_t StartTask_Handler;
+//任务函数
+void start_task(void *pvParameters);
+
+//任务优先级
+#define LED1_TASK_PRIO		3
+//任务堆栈大小	
+#define LED1_STK_SIZE 		50  
+//任务句柄
+TaskHandle_t LED1Task_Handler;
+//任务函数
+void LED_Thread1(void *pvParameters);
+
+//任务优先级
+#define LED2_TASK_PRIO		4
+//任务堆栈大小	
+#define LED2_STK_SIZE 		50  
+//任务句柄
+TaskHandle_t LED2Task_Handler;
+//任务函数
+void LED_Thread2(void *pvParameters);
 
 /*!
-    \brief    toggle the led every 500ms
-    \param[in]  none
-    \param[out] none
-    \retval     none
-*/
-void led_spark(void)
-{
-    static __IO uint32_t timingdelaylocal = 0U;
-
-    if(timingdelaylocal) {
-
-        if(timingdelaylocal < 500U) {
-            gd_eval_led_on(LED2);
-        } else {
-            gd_eval_led_off(LED2);
-        }
-
-        timingdelaylocal--;
-    } else {
-        timingdelaylocal = 1000U;
-    }
-}
-
-/*!
-    \brief    main function
+    \brief      main function
     \param[in]  none
     \param[out] none
     \retval     none
 */
 int main(void)
+{ 
+	systick_config();//配置系统主频168M,外部8M晶振,配置在#define __SYSTEM_CLOCK_168M_PLL_8M_HXTAL        (uint32_t)(168000000)	
+	
+	// 初始化LED（使用myboard.h中定义的LED）
+	gd_eval_led_init(LED1);
+	
+	//创建开始任务
+	xTaskCreate((TaskFunction_t )start_task,            //任务函数
+							(const char*    )"start_task",          //任务名称
+							(uint16_t       )START_STK_SIZE,        //任务堆栈大小
+							(void*          )NULL,                  //传递给任务函数的参数
+							(UBaseType_t    )START_TASK_PRIO,       //任务优先级
+							(TaskHandle_t*  )&StartTask_Handler);   //任务句柄   
+							
+	vTaskStartScheduler();          //开启任务调度
+}
+
+//开始任务任务函数
+void start_task(void *pvParameters)
 {
-#ifdef __FIRMWARE_VERSION_DEFINE
-    uint32_t fw_ver = 0;
-#endif
+    taskENTER_CRITICAL();           //进入临界区
+    //创建LED1任务
+    xTaskCreate((TaskFunction_t )LED_Thread1,     	
+                (const char*    )"led1_task",   	
+                (uint16_t       )LED1_STK_SIZE, 
+                (void*          )NULL,				
+                (UBaseType_t    )LED1_TASK_PRIO,	
+                (TaskHandle_t*  )&LED1Task_Handler);   
 
-    gd_eval_led_init(LED2);
-    gd_eval_led_off(LED2);
-    systick_config();
 
-#ifdef __FIRMWARE_VERSION_DEFINE
-    fw_ver = gd32f4xx_firmware_version_get();
-    /* print firmware version */
-    printf("\r\nGD32F4xx series firmware version: V%d.%d.%d", (uint8_t)(fw_ver >> 24), (uint8_t)(fw_ver >> 16), (uint8_t)(fw_ver >> 8));
-#endif /* __FIRMWARE_VERSION_DEFINE */
+	    xTaskCreate((TaskFunction_t )LED_Thread2,     	
+                (const char*    )"led2_task",   	
+                (uint16_t       )LED2_STK_SIZE, 
+                (void*          )NULL,				
+                (UBaseType_t    )LED2_TASK_PRIO,	
+                (TaskHandle_t*  )&LED2Task_Handler);   
+													
+							
+    vTaskDelete(StartTask_Handler); //删除开始任务
+    taskEXIT_CRITICAL();            //退出临界区
 
-    while(1) {
-        /* toggle LEDs */
-        gd_eval_led_toggle(LED2);
-        delay_1ms(500);
+}
+
+//LED1任务函数 
+void LED_Thread1(void *pvParameters)
+{
+    while(1)
+    {
+      gd_eval_led_on(LED1);  // 点亮LED1
+      vTaskDelay(100);
     }
-}
+} 
 
-#ifdef GD_ECLIPSE_GCC
-/* retarget the C library printf function to the USART, in Eclipse GCC environment */
-int __io_putchar(int ch)
+//LED2任务函数 
+void LED_Thread2(void *pvParameters)
 {
-    usart_data_transmit(EVAL_COM0, (uint8_t)ch);
-    while(RESET == usart_flag_get(EVAL_COM0, USART_FLAG_TBE));
-    return ch;
-}
-#else
-/* retarget the C library printf function to the USART */
-int fputc(int ch, FILE *f)
-{
-    usart_data_transmit(EVAL_COM0, (uint8_t)ch);
-    while(RESET == usart_flag_get(EVAL_COM0, USART_FLAG_TBE));
+    while(1)
+    {
+			gd_eval_led_off(LED1);  // 关闭LED1
+      vTaskDelay(250);
+    }
+}  
 
-    return ch;
-}
-#endif /* GD_ECLIPSE_GCC */
+

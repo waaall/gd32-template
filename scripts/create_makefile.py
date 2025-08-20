@@ -29,6 +29,7 @@ def main(tpl_file, dst_file):
         tpl_file: 模板Makefile文件路径 (template.makefile)
         dst_file: 输出Makefile文件路径 (Makefile)
     """
+    print("注意: 这是更新裸机...")
     # 初始化文件列表：存储不同类型的源文件和配置
     cFileList = []      # 存储所有.c源文件路径
     hPathList = []      # 存储所有头文件目录路径
