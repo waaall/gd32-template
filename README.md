@@ -144,29 +144,6 @@ make clean
   - `@@C_INCLUDES@@` - 头文件目录列表
   - `@@LDSCRIPT@@` - 链接脚本路径
 
-## 内存配置
-
-### GD32F470VIT内存映射
-
-```
-Flash:   0x08000000 - 3072KB (3MB)
-SRAM:    0x20000000 - 512KB  
-TCM RAM: 0x10000000 - 64KB
-```
-
-### 内存使用情况
-
-编译后会显示内存使用统计：
-
-```
-   text    data     bss     dec     hex filename
-   5932     108    3444    9484    250c build/gd32f4xx_project.elf
-```
-
-- **text**: 程序代码大小
-- **data**: 初始化数据大小
-- **bss**: 未初始化数据大小
-
 ## 调试和烧录
 
 ### 使用pyocd
@@ -195,6 +172,82 @@ openocd -f cmsis-dap.cfg -f gd32f4xx.cfg -c init -c "reset halt" -c "wait_halt" 
 - `cmsis-dap.cfg`: CMSIS-DAP调试器配置
 - `gd32f4xx.cfg`: GD32F4xx目标配置
 - `openocd_gdlink.cfg`: GDLink调试器配置
+
+## RTOS移植
+
+### 1. 下载FreeRTOS-Kernel
+
+- [FreeRTOS-Kernel-github](https://github.com/FreeRTOS/FreeRTOS-Kernel)
+  
+可以clone最新的或者是下载release都行。
+
+### 2. 拷贝到项目文件夹并修改Makefile
+
+1. 拷贝到项目文件夹
+我个人习惯放在Drivers文件夹，然后将.c文件都放到`Drivers/FreeRTOS/source`文件夹。这样也方便运行`scripts/analyze_c_project.py`。
+
+但是不强制，只要`Makefile`配置上正确的`C_SOURCES`就可以。
+
+2. 修改Makefile
+
+```makefile
+C_SOURCES +=  \
+巴拉巴拉以前的
+./Drivers/FreeRTOS/source/croutine.c \
+./Drivers/FreeRTOS/source/event_groups.c \
+./Drivers/FreeRTOS/source/list.c \
+./Drivers/FreeRTOS/source/queue.c \
+./Drivers/FreeRTOS/source/stream_buffer.c \
+./Drivers/FreeRTOS/source/tasks.c \
+./Drivers/FreeRTOS/source/timers.c \
+./Drivers/FreeRTOS/portable/MemMang/heap_4.c \
+./Drivers/FreeRTOS/portable/GCC/ARM_CM4F/port.c
+
+C_INCLUDES +=  \
+巴拉巴拉以前的
+-I./Drivers/FreeRTOS/include \
+-I./Drivers/FreeRTOS/portable/GCC/ARM_CM4F
+```
+
+### 3. 修改两个文件
+
+#### gd32f4xx_it.c
+
+这个文件就是专门系统中断回调函数的。
+
+1. 注释函数`SVC_Handler`
+2. 注释函数`PendSV_Handler`
+3. 重写函数`SysTick_Handler`
+
+```c
+//导入 FreeRTOS 头文件
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern void xPortSysTickHandler(void);
+
+//滴答定时器的回调函数，给freertos提供时基
+void SysTick_Handler(void){
+	if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)
+	{
+		xPortSysTickHandler();
+	}
+}
+```
+
+#### main.c
+
+1. 添加freeRTOS头文件
+```c
+//freeRTOS
+#include "FreeRTOS.h"
+#include "task.h"
+```
+
+2. 用`xTaskCreate`创建个任务；`vTaskStartScheduler`运行任务；具体见代码。
+
+然后就可以正常的make、烧录了。
+
 
 ## 开发流程
 
@@ -227,21 +280,6 @@ make clean
 # 重新编译
 make
 ```
-
-## VS Code集成
-
-项目包含VS Code任务配置：
-
-### 可用任务
-
-- **build**: 编译项目 (`make`)
-- **download**: 烧录到目标板 (使用OpenOCD)
-
-### 使用方法
-
-1. 打开VS Code
-2. `Ctrl+Shift+P` -> `Tasks: Run Task`
-3. 选择相应任务
 
 ## 常见问题
 
@@ -284,7 +322,6 @@ GD32F403.SFR  GD32F403.svd  GD32F4xx.SFR  GD32F4xx.svd
 - 确保OpenOCD正确配置
 - 检查调试器连接
 - 验证目标板电源
-
 
 ---
 
