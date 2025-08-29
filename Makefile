@@ -77,8 +77,10 @@ C_SOURCES +=  \
 ./Drivers/GD32F4xx_standard_peripheral/Source/gd32f4xx_exti.c \
 ./Drivers/GD32F4xx_standard_peripheral/Source/gd32f4xx_wwdgt.c \
 ./Core/src/systick.c \
-./Core/src/myboard.c \
 ./Core/src/main.c \
+./Core/src/adc_driver.c \
+./Core/src/com_driver.c \
+./Core/src/fft_phasor_task.c \
 ./Core/src/gd32f4xx_it.c \
 ./Drivers/FreeRTOS/source/croutine.c \
 ./Drivers/FreeRTOS/source/event_groups.c \
@@ -88,7 +90,10 @@ C_SOURCES +=  \
 ./Drivers/FreeRTOS/source/tasks.c \
 ./Drivers/FreeRTOS/source/timers.c \
 ./Drivers/FreeRTOS/portable/MemMang/heap_4.c \
-./Drivers/FreeRTOS/portable/GCC/ARM_CM4F/port.c
+./Drivers/FreeRTOS/portable/GCC/ARM_CM4F/port.c \
+./Drivers/CMSIS/DSP/Source/TransformFunctions/TransformFunctions.c \
+./Drivers/CMSIS/DSP/Source/FastMathFunctions/FastMathFunctions.c \
+./Drivers/CMSIS/DSP/Source/CommonTables/CommonTables.c
 
 # ASM sources - 由create_makefile.py脚本自动扫描生成所有.s文件路径
 ASM_SOURCES += 
@@ -150,12 +155,13 @@ AS_INCLUDES =
 
 # C includes - 由create_makefile.py脚本自动扫描生成所有头文件目录
 C_INCLUDES +=  \
+-I./Core/inc \
 -I./Drivers/CMSIS \
 -I./Drivers/CMSIS/GD/GD32F4xx/Include \
 -I./Drivers/GD32F4xx_standard_peripheral/Include \
--I./Core/inc \
 -I./Drivers/FreeRTOS/include \
--I./Drivers/FreeRTOS/portable/GCC/ARM_CM4F
+-I./Drivers/FreeRTOS/portable/GCC/ARM_CM4F \
+-I./Drivers/CMSIS/DSP/Include
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
