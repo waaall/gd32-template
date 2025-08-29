@@ -24,8 +24,6 @@ static volatile uint16_t g_rx_index = 0;
 
 /* =================== 私有函数声明 =================== */
 static void com_task_function(void *pvParameters);
-static void com_uart_init(void);
-static void com_gpio_config(void);
 static BaseType_t com_uart_send(const uint8_t* data, uint16_t length);
 static uint16_t com_calculate_checksum(const uint8_t* data, uint16_t length);
 static void com_process_rx_data(void);
@@ -45,10 +43,6 @@ BaseType_t com_driver_init(QueueHandle_t phasor_queue, const com_config_t* confi
     
     /* 初始化统计信息 */
     memset(&g_stats, 0, sizeof(com_statistics_t));
-    
-    /* 配置GPIO和UART */
-    com_gpio_config();
-    com_uart_init();
     
     /* 创建通信任务 */
     BaseType_t result = xTaskCreate(
@@ -127,29 +121,10 @@ BaseType_t com_send_status(uint16_t status_code, const char* message)
 void com_get_default_config(com_config_t* config)
 {
     config->protocol = COM_PROTOCOL_CUSTOM;
-    config->baudrate = COM_UART_BAUDRATE;
     config->pmu_id = 1;
     config->data_rate_ms = 20; // 50Hz数据率
     config->enable_timestamp = true;
     config->enable_checksum = true;
-}
-
-BaseType_t com_update_config(const com_config_t* config)
-{
-    if (config == NULL) {
-        return pdFAIL;
-    }
-    
-    taskENTER_CRITICAL();
-    memcpy(&g_config, config, sizeof(com_config_t));
-    taskEXIT_CRITICAL();
-    
-    /* 如果波特率改变，重新初始化UART */
-    if (g_config.baudrate != config->baudrate) {
-        com_uart_init();
-    }
-    
-    return pdPASS;
 }
 
 void com_get_statistics(com_statistics_t* stats)
@@ -305,44 +280,6 @@ static void com_task_function(void *pvParameters)
             last_heartbeat = current_time;
         }
     }
-}
-
-static void com_uart_init(void)
-{
-    /* 使能USART时钟 */
-    rcu_periph_clock_enable(RCU_USART0);
-    
-    /* USART参数配置 */
-    usart_deinit(USART0);
-    usart_baudrate_set(USART0, g_config.baudrate);
-    usart_word_length_set(USART0, USART_WL_8BIT);
-    usart_stop_bit_set(USART0, USART_STB_1BIT);
-    usart_parity_config(USART0, USART_PM_NONE);
-    usart_hardware_flow_rts_config(USART0, USART_RTS_DISABLE);
-    usart_hardware_flow_cts_config(USART0, USART_CTS_DISABLE);
-    usart_receive_config(USART0, USART_RECEIVE_ENABLE);
-    usart_transmit_config(USART0, USART_TRANSMIT_ENABLE);
-    
-    /* 使能USART接收中断 */
-    usart_interrupt_enable(USART0, USART_INT_RBNE);
-    nvic_irq_enable(USART0_IRQn, 2, 0);
-    
-    usart_enable(USART0);
-}
-
-static void com_gpio_config(void)
-{
-    /* 使能GPIO时钟 */
-    rcu_periph_clock_enable(RCU_GPIOA);
-    
-    /* 配置USART0 GPIO (PA9=TX, PA10=RX) */
-    gpio_af_set(GPIOA, GPIO_AF_7, GPIO_PIN_9);
-    gpio_af_set(GPIOA, GPIO_AF_7, GPIO_PIN_10);
-    
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_9);
-    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_9);
-    
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_10);
 }
 
 static BaseType_t com_uart_send(const uint8_t* data, uint16_t length)

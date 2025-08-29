@@ -78,6 +78,7 @@ C_SOURCES +=  \
 ./Drivers/GD32F4xx_standard_peripheral/Source/gd32f4xx_wwdgt.c \
 ./Core/src/systick.c \
 ./Core/src/main.c \
+./Core/src/device_init.c \
 ./Core/src/adc_driver.c \
 ./Core/src/com_driver.c \
 ./Core/src/fft_phasor_task.c \
@@ -186,7 +187,7 @@ LDSCRIPT = ./gd32f4xx_flash.ld
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
-LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+LDFLAGS = $(MCU) -specs=nano.specs -specs=nosys.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin

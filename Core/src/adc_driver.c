@@ -6,6 +6,7 @@
 */
 
 #include "adc_driver.h"
+#include "device_init.h"
 #include "gd32f4xx_rcu.h"
 #include "gd32f4xx_dma.h"
 #include "gd32f4xx_adc.h"
@@ -126,7 +127,7 @@ static void adc_timer_config(void)
     timer_struct_para_init(&timer_initpara);
 
     /* 配置定时器产生10kHz触发频率 */
-    uint32_t timer_freq = 180000000; // 假设系统时钟180MHz
+    uint32_t timer_freq = device_get_system_clock_freq(); // 动态获取系统时钟频率
     uint32_t prescaler = (timer_freq / 1000000) - 1; // 1MHz基准
     uint32_t period = (1000000 / (uint32_t)ADC_SAMPLE_RATE_HZ) - 1; // 10kHz更新
 
@@ -164,8 +165,8 @@ static void adc_dma_config(void)
     dma_interrupt_enable(DMA1, DMA_CH0, DMA_INT_FTF);
     dma_interrupt_enable(DMA1, DMA_CH0, DMA_INT_HTF);
 
-    /* 配置NVIC */
-    nvic_irq_enable(DMA1_Channel0_IRQn, 1, 0);
+    /* 配置NVIC - 确保中断优先级允许调用FreeRTOS API */
+    nvic_irq_enable(DMA1_Channel0_IRQn, 5, 0);
 
     /* 使能DMA通道 */
     dma_channel_enable(DMA1, DMA_CH0);

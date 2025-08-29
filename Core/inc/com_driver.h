@@ -20,7 +20,6 @@ extern "C" {
 #include <stdbool.h>
 
 /* =================== 配置参数 =================== */
-#define COM_UART_BAUDRATE       115200
 #define COM_TASK_STACK_SIZE     2048
 #define COM_TASK_PRIORITY       (tskIDLE_PRIORITY + 2)
 
@@ -45,7 +44,6 @@ typedef enum {
 /* 通信配置结构体 */
 typedef struct {
     com_protocol_t protocol;        // 通信协议
-    uint32_t baudrate;             // 波特率
     uint16_t pmu_id;               // PMU ID
     uint32_t data_rate_ms;         // 数据发送周期(毫秒)
     bool enable_timestamp;         // 是否包含时间戳
