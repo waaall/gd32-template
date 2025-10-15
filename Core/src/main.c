@@ -28,6 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "basic_driver.h"
+#include "basic_test.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,6 +80,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_2);
+    
+    // 每秒打印一次 VREFINT 数据
+    print_vrefint_data();
   }
   else if (htim->Instance == TIM10)
   {

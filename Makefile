@@ -38,6 +38,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/basic_driver.c \
+Core/Src/basic_test.c \
 Core/Src/gpio.c \
 Core/Src/adc.c \
 Core/Src/crc.c \

@@ -64,6 +64,9 @@ void basic_init(void)
 
     // 开启 TIM7 定时器中断
     HAL_TIM_Base_Start_IT(&htim7);
+    
+    // 启动 ADC DMA 转换
+    ADC_Start_DMA_Conversion();
 }
 
 // 感知到的ADC value转换为电压值----------------------------------------------*/
