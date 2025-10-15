@@ -37,6 +37,7 @@ BUILD_DIR = build
 # C sources
 C_SOURCES =  \
 Core/Src/main.c \
+Core/Src/basic_driver.c \
 Core/Src/gpio.c \
 Core/Src/adc.c \
 Core/Src/crc.c \
@@ -70,7 +71,7 @@ Core/Src/system_stm32f4xx.c
 # ASM sources
 ASM_SOURCES =  \
 # startup_stm32f429xx.s
-# startup_stm32f429xx.s
+
 # ASM sources
 ASMM_SOURCES =  \
 startup_gd32f450_470.S
@@ -151,7 +152,7 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F429XX_FLASH.ld
+LDSCRIPT = gd32f4xx_flash.ld
 
 # libraries
 LIBS = -lc -lm -lnosys 

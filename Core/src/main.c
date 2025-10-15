@@ -27,7 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "basic_driver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,7 +59,82 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/**
+  ******************************************************************************
+  *
+  * 中断回调函数：表明各模块的连接/跳转逻辑
+  *             1. TIMER
+  *             2. ADC
+  *             3. GPIO
+  *             4. 通信
+  *
+  ******************************************************************************
+*/
 
+/* 1. TIMER的中断回调函数 -------------------------------------------------------*/
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM7)
+  {
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_2);
+  }
+  else if (htim->Instance == TIM10)
+  {
+    // 
+  }
+  else if (htim->Instance == TIM11)
+  {
+    //
+  }
+  else if (htim->Instance == TIM13)
+  {
+    // 
+  }
+  else if (htim->Instance == TIM14)
+  {
+    //
+  }
+}
+
+/* 2. ADC的中断回调函数 --------------------------------------------------------*/
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc1)
+{
+    // 感知电压值处理
+    // sensed_value_handler();
+}
+
+/* 3. GPIO的中断回调函数 -------------------------------------------------------*/
+
+// 重定义GPIO中断回调函数
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  // if (GPIO_Pin == MAG_Pin)
+  // {
+  //   //
+  // }
+}
+
+/* 4. 通信的中断回调函数 -------------------------------------------------------*/
+
+// 串口发送完成的中断回调函数
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART1)
+  {
+      // 处理USART1发送完成后的操作
+  }
+}
+
+// 串口接收完成的中断回调函数
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)
+    {
+        // 处理USART1接收到的数据
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -101,6 +176,9 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  
+  // 项目初始化
+  basic_init();
 
   /* USER CODE END 2 */
 
