@@ -12,39 +12,154 @@
 - 开源工具链支持（ARM GNU Toolchain）
 - OpenOCD调试支持
 
-## 项目结构
+本分支是用stm32-vscode的开发流程来开发gd32, 具体方法如下：
+
+## 移植具体操作
+
+
+### 1. 寻找对应芯片
+
+对于gd32，基本上是对stm32的一比一复刻，理解了上述知识后只需要一点点工作就可以了。
+
+比如对于GD32F470VIT6，对照他们的外设资源，就可以确定最接近的就是STM32F429VIT6，具体字母代表什么，比如接口个数、封装等信息我就不展开说了，随便查一查就知道了。
+
+
+### 2. 初始化代码/库文件
+
+#### 2.1 STM32CubeMX初始化
+
+这个就当作是在开发stm32就可以，初始化时钟、外设、中断等，然后生成MAKEFILE项目文件。
+
+#### 2.2 下载gd32芯片相关文件
+
+`GigaDevice.GD32F4xx_DFP.3.0.3.pack/Device/F4XX`中Source和Include文件夹中就有上文提到的那几个文件。
+
+### 3. 核对定义
+
+用vscode或者任何文本编辑器对比也可以，用下面指令也可以，我建议前者。
+
+查看向量表位置与内容：
+  - arm-none-eabi-objdump -h your.elf | grep -E "vectors|isr"
+  - arm-none-eabi-objdump -D your.elf | sed -n '1,120p'  # 检查起始几项是否为 _estack/Reset_Handler
+  
+确认符号是否导出：
+  - arm-none-eabi-nm your.elf | grep -E "_sidata|_sdata|_edata|_sbss|_ebss|_estack|__gVectors|g_pfnVectors"
+
+运行期核对时钟：
+  - 在 main 里调用 SystemCoreClockUpdate 后打印/断点检查 SystemCoreClock
+
+核对芯片手册尤其是外设接口、寄存器定义是否一致。（不一致需要修改对应的库文件）
+
+### 4. 修改中断向量表
+
+也就是在`startup_gd32f4xx.s`中定义的中断向量表和中断向量处理函数名，要和stm32中一致，比如在gd32中DMA中断处理函数是这样命名的：
 
 ```
-try-gd32-mac/
-├── Core/                           # 核心应用代码
-│   ├── inc/                        # 头文件目录
+                    .word DMA0_Channel0_IRQHandler
+                    .word DMA0_Channel1_IRQHandler
+                    .word DMA0_Channel2_IRQHandler
+                    .word DMA0_Channel3_IRQHandler
+```
+
+而在stm32中DMA中断处理函数是这样命名的：
+
+```
+  .word     DMA1_Stream0_IRQHandler
+  .word     DMA1_Stream1_IRQHandler
+  .word     DMA1_Stream2_IRQHandler
+  .word     DMA1_Stream3_IRQHandler
+```
+
+绝大多数只是名称不一样，不一样的替换就可以，但要注意有些是没有的比如stm的SAI：
+
+```
+  .word     SAI1_IRQHandler     /* SAI1
+```
+
+gd32中没有定义，这个就不要改：
+
+```
+                    .word 0     /* Vector Number 103,Reserved */
+```
+
+### 5. 修改MAKEFILE
+
+#### ASM项
+```makefile
+# ASM sources
+ASM_SOURCES = \
+# startup_stm32f429xx.s
+
+# ASM sources
+ASMM_SOURCES = \
+startup_gd32f450_470.S
+```
+#### LD项
+```makefile
+# LDSCRIPT = STM32F429XX_FLASH.ld
+LDSCRIPT = gd32f4xx_flash.ld
+```
+
+别的都不用改，就可以像make + arm-gcc + openocd/pyocd 一样开发了。
+
+#### openocd 
+对于openocd最好是用“假的”`stm32f4xx.cfg`，否则可能有兼容性问题，当然如果用`GD32EmbeddedBuilder`中的openocd也可以，但只有windows版。
+
+### 6. 总结
+
+总之对于GD32F470VIT6只需要三步：
+
+1. 修改`startup_gd32f4xx.s`文件中的中断处理函数；
+2. 修改makefile中的ASM项和LD项。
+3. openocd可能要改一下`stm.ctg`的文件。
+
+## 项目结构
+
+```bash
+this_project/
+├── Core/                         # 核心应用代码
+│   ├── inc/                      # 头文件目录
+│   │   ├── adc.h
+│   │   ├── basic_driver.h
+│   │   ├── basic_test.h
+│   │   ├── crc.h
+│   │   ├── dma.h
+│   │   ├── gpio.h
 │   │   ├── main.h
-│   │   ├── gd32f4xx_it.h
-│   │   ├── gd32f4xx_libopt.h
-│   │   ├── gd32f450i_eval.h
-│   │   └── systick.h
-│   └── src/                        # 源文件目录
-│       ├── main.c                  # 主程序入口
-│       ├── gd32f4xx_it.c          # 中断处理函数
-│       ├── gd32f450i_eval.c       # 评估板相关代码
-│       └── systick.c               # 系统滴答定时器
-├── Drivers/                        # 驱动库
-│   ├── CMSIS/                      # ARM CMSIS标准
-│   │   ├── core_cm4.h             # Cortex-M4核心头文件
-│   │   └── GD/GD32F4xx/           # GD32F4xx特定文件
-│   │       ├── Include/           # 头文件
-│   │       └── Source/            # 源文件
-│   └── GD32F4xx_standard_peripheral/  # GD32标准外设库
-│       ├── Include/               # 外设库头文件
-│       └── Source/                # 外设库源文件
-├── scripts/                        # 构建脚本
+│   │   ├── stm32f4xx_hal_conf.h
+│   │   ├── stm32f4xx_it.h
+│   │   ├── systick.h
+│   │   ├── tim.h
+│   │   └── usart.h
+│   └── src/                      # 源文件目录
+│       ├── adc.c
+│       ├── basic_driver.c
+│       ├── basic_test.c
+│       ├── crc.c
+│       ├── dma.c
+│       ├── gpio.c
+│       ├── main.c
+│       ├── stm32f4xx_hal_msp.c
+│       ├── stm32f4xx_it.c
+│       ├── syscalls.c
+│       ├── sysmem.c
+│       ├── system_stm32f4xx.c
+│       ├── tim.c
+│       └── usart.c
+├── Drivers/                       # 驱动库
+│   ├── CMSIS/                     # ARM CMSIS标准
+│   └── STM32F4xx_HAL_Driver/      # stm32库
+│       ├── Inc/                   # 外设库头文件
+│       └── Src/                   # 外设库源文件
+├── scripts/                       # 构建脚本
+│   ├── analyze_c_project.py       # 分析c项目的脚本
 │   ├── create_makefile.py         # Makefile自动生成脚本
-│   └── template.makefile          # Makefile模板
+│   └── convert_to_utf8.sh         # utf8转码sh脚本
 ├── gd32f4xx_flash.ld              # 链接脚本 (GD32F470VIT)
 ├── startup_gd32f450_470.S         # 启动文件
-├── Makefile                        # 生成的Makefile
+├── Makefile                       # 生成的Makefile
 ├── *.cfg                          # OpenOCD配置文件
-└── README.md                       # 项目说明文档
+└── README.md                      # 项目说明文档
 ```
 
 ## 环境要求
