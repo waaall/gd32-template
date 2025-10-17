@@ -1,0 +1,6 @@
+# 默认使用 LF
+* text eol=lf
+
+# 对于 Windows 批处理或脚本允许 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
