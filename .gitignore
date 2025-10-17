@@ -9,6 +9,13 @@ Thumbs.db
 
 # build and log dir
 build/
+Debug/
+obj/
+Release/
+*.bak
+*.log
+*.aux
+*.out
 logs/
 temp*
 

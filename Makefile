@@ -13,7 +13,7 @@
 ######################################
 # target
 ######################################
-TARGET = try-gd32-cubemx-freertos
+TARGET = gd32-cubemx-freertos
 
 
 ######################################
@@ -37,6 +37,8 @@ BUILD_DIR = build
 # C sources
 C_SOURCES =  \
 Core/Src/main.c \
+Core/Src/basic_driver.c \
+Core/Src/basic_test.c \
 Core/Src/gpio.c \
 Core/Src/freertos.c \
 Core/Src/adc.c \

@@ -22,6 +22,10 @@
 
 /* USER CODE BEGIN 0 */
 
+// ADC DMA 缓冲区，5个通道
+#define ADC_CHANNEL_COUNT 5
+volatile uint16_t adc_dma_buffer[ADC_CHANNEL_COUNT];
+
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;
@@ -194,5 +198,18 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+/**
+  * @brief  启动ADC DMA转换
+  * @retval None
+  */
+void ADC_Start_DMA_Conversion(void)
+{
+    // 启动ADC DMA转换
+    if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_dma_buffer, ADC_CHANNEL_COUNT) != HAL_OK)
+    {
+        Error_Handler();
+    }
+}
 
 /* USER CODE END 1 */
