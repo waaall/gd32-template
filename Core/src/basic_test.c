@@ -54,7 +54,7 @@ void print_vrefint_data(void)
     vdda_mv = (1210UL * 4095UL) / vrefint_value;
     
     // 格式化数据（使用整数，精度到毫伏）
-    sprintf(uart_buffer, "VREFINT ADC Value: %u, VDDA: %u.%03uV\r\n", 
+    sprintf(uart_buffer, "VREFINT ADC Value: %u, VDDA: %lu.%03luV\r\n", 
             vrefint_value, vdda_mv / 1000, vdda_mv % 1000);
     
     // 通过串口发送
