@@ -39,6 +39,8 @@ C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/basic_driver.c \
 Core/Src/basic_test.c \
+Core/Src/syscalls.c \
+Core/Src/sysmem.c \
 Core/Src/gpio.c \
 Core/Src/freertos.c \
 Core/Src/adc.c \
