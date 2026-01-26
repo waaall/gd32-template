@@ -153,6 +153,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 // 串口发送完成的中断回调函数
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
+  SB_HandleTxCplt(&bridge_u3_to_u1, huart);
+
   if (huart->Instance == USART1)
   {
       // 处理USART1发送完成后的操作
