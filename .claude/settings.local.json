@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make clean:*)",
+      "Bash(make:*)",
+      "Bash(arm-none-eabi-size:*)",
+      "Bash(git diff:*)",
+      "Bash(grep:*)",
+      "Bash(for func in \"_axis_label\" \"_save_comparison_csv\" \"_print_detailed_comparison\" \"expected_output_from_input\" \"expected_output_from_code\" \"input_to_raw_code\" \"_infer_measurement_resolution\")",
+      "Bash(do echo \"=== $func ===\")",
+      "Bash(done)",
+      "Bash(python freq_data_parser.py:*)",
+      "Bash(python freq_alignment.py:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

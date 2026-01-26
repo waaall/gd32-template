@@ -57,6 +57,22 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define CTRL485_Pin GPIO_PIN_10
+#define CTRL485_GPIO_Port GPIOD
+#define Soft_I2C_SCL_Pin GPIO_PIN_11
+#define Soft_I2C_SCL_GPIO_Port GPIOD
+#define Soft_I2C_SDA_IN_Pin GPIO_PIN_12
+#define Soft_I2C_SDA_IN_GPIO_Port GPIOD
+#define Soft_I2C_SDA_OUT_Pin GPIO_PIN_13
+#define Soft_I2C_SDA_OUT_GPIO_Port GPIOD
+#define TEST1_Pin GPIO_PIN_8
+#define TEST1_GPIO_Port GPIOC
+#define TEST2_Pin GPIO_PIN_9
+#define TEST2_GPIO_Port GPIOC
+#define FLASH_NCS_Pin GPIO_PIN_7
+#define FLASH_NCS_GPIO_Port GPIOD
+#define FLASH_WP_Pin GPIO_PIN_6
+#define FLASH_WP_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

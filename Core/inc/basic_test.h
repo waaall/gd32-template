@@ -1,8 +1,8 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : pace_test.h
-  * @brief          : Header for pace_test.c file.
+  * @file           : basic_test.h
+  * @brief          : Header for basic_test.c file.
   *                   This file contains the common defines of the application.
   * @author         : zhengxu
   ******************************************************************************
@@ -18,17 +18,9 @@
 // 测试func ---------------------------------------------------------
 
 // ADC VREFINT 数据处理和打印
-void print_vrefint_data(void);
+void print_test_data(void);
 
-// 异常处理宏（根据实际需求调整）--------------------------------------------
-#define CHECK_HAL_STATUS(status)     \
-    do {                             \
-        if ((status) != HAL_OK) {    \
-            handle_hal_error();      \
-        }                            \
-    } while(0)
-
-// 异常处理函数声明
-void handle_hal_error(void);
+// 测试 4-20mA 输出
+void test_ma_out(void);
 
 #endif // BASIC_TEST_H

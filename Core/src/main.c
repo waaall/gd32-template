@@ -21,6 +21,9 @@
 #include "adc.h"
 #include "crc.h"
 #include "dma.h"
+#include "i2c.h"
+#include "iwdg.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -29,6 +32,9 @@
 /* USER CODE BEGIN Includes */
 #include "basic_driver.h"
 #include "basic_test.h"
+#include "zero_crossing.h"  // 过零检测模块
+#include "adc_service.h"    // ADC采样服务模块（用于定时器回调）
+#include "serial_bridge.h"  // 串口转发模块
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +55,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+static volatile uint8_t adc_srv_calc_pending = 0;
+static volatile uint8_t print_test_pending = 0;
+
+/* Serial Bridge Instance */
+// Config: Forward USART3 (RX=PD9) -> USART1 (TX=PA9)
+// Note: CTRL485 (PD10) is initialized to Low in gpio.c, enabling RS485 Reception on USART3.
+SerialBridge_t bridge_u3_to_u1;
 
 /* USER CODE END PV */
 
@@ -77,24 +90,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM7)
   {
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_2);
-    
-    // 每秒打印一次 VREFINT 数据
-    print_vrefint_data();
+    // 每秒置位打印标志，主循环中再执行实际串口输出
+    print_test_pending = 1;
   }
   else if (htim->Instance == TIM10)
   {
-    // 
-  }
-  else if (htim->Instance == TIM11)
-  {
-    //
+    // 标记ADC服务需要在主循环中执行计算任务（每**ms触发一次）
+    adc_srv_calc_pending = 1;
   }
   else if (htim->Instance == TIM13)
   {
-    // 
+    //
   }
   else if (htim->Instance == TIM14)
   {
@@ -102,11 +108,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
 }
 
-/* 2. ADC的中断回调函数 --------------------------------------------------------*/
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc1)
+/**
+ * @brief  TIM输入捕获回调函数（HAL库标准回调）
+ * @note   HAL_TIM_IRQHandler会自动调用此函数
+ */
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-    // 感知电压值处理
-    // sensed_value_handler();
+  if (htim->Instance == TIM2)
+  {
+    // 调用过零检测模块的处理函数
+    ZC_TIM_CaptureCallback(htim);
+  }
+}
+
+/* 2. ADC的中断回调函数 --------------------------------------------------------*/
+
+/**
+ * @brief  ADC转换完成回调（HAL库自动调用）
+ * @param  hadc: ADC句柄指针
+ * @note   此回调在DMA中断上下文中执行
+ */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+  if (hadc->Instance == ADC1) {
+    // 调用ADC服务模块处理数据
+    extern volatile uint16_t adc_dma_buffer[];
+    ADC_SRV_DMA_ConvCpltCallback(hadc, adc_dma_buffer);
+  }
 }
 
 /* 3. GPIO的中断回调函数 -------------------------------------------------------*/
@@ -138,6 +166,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
         // 处理USART1接收到的数据
     }
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
+{
+  // Handle Serial Bridge Events
+  // USART3 (RX=PD9) -> USART1 (TX=PA9)
+  SB_HandleRxEvent(&bridge_u3_to_u1, huart, size);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  SB_HandleError(&bridge_u3_to_u1, huart);
 }
 /* USER CODE END 0 */
 
@@ -180,9 +220,16 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
+  MX_SPI1_Init();
+  MX_TIM2_Init();
+  MX_USART3_UART_Init();
+  MX_IWDG_Init();
+  MX_TIM9_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  
-  // 项目初始化
+
+  // 项目初始化（包含ADC服务、过零检测等所有模块）
   basic_init();
 
   /* USER CODE END 2 */
@@ -194,6 +241,19 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    HAL_IWDG_Refresh(&hiwdg);
+
+    if (adc_srv_calc_pending != 0U)
+    {
+      adc_srv_calc_pending = 0U;
+      ADC_SRV_CalculateTask();
+    }
+
+    if (print_test_pending != 0U)
+    {
+      print_test_pending = 0U;
+      print_test_data();
+    }
   }
   /* USER CODE END 3 */
 }
@@ -210,17 +270,18 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 128;
+  RCC_OscInitStruct.PLL.PLLM = 6;
+  RCC_OscInitStruct.PLL.PLLN = 64;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -234,10 +295,10 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }

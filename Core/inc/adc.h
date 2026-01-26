@@ -37,7 +37,12 @@ extern ADC_HandleTypeDef hadc1;
 /* USER CODE BEGIN Private defines */
 
 // ADC DMA 缓冲区声明
-#define ADC_CHANNEL_COUNT 5
+#define ADC_CHANNEL_COUNT       5
+#define ADC_CH_UC               0       // PC0 - ADC_CHANNEL_10
+#define ADC_CH_UA               1       // PC1 - ADC_CHANNEL_11
+#define ADC_CH_UB               2       // PC2 - ADC_CHANNEL_12
+#define ADC_CH_AHALF            3       // PC3 - ADC_CHANNEL_13
+#define ADC_CH_VREF             4       // NO  - ADC_CHANNEL_14
 extern volatile uint16_t adc_dma_buffer[ADC_CHANNEL_COUNT];
 
 /* USER CODE END Private defines */
