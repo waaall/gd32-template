@@ -11,6 +11,9 @@ Thumbs.db
 build/
 logs/
 temp*
+*.csv
+test-data/
+output-test-data/
 
 # Prerequisites
 *.d

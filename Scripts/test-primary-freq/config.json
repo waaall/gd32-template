@@ -1,0 +1,9 @@
+{
+  "input": "test-data",
+  "timestamp": "时间段",
+  "power": "AM22SIG0401.AV",
+  "freq": "AMSPEED.AV",
+  "freq_is_speed": true,
+  "output_dir": "output-test-data",
+  "pattern": "*.csv"
+}

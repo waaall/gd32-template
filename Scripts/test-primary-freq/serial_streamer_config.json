@@ -1,0 +1,28 @@
+{
+  "csv_path": "output-test-data/example.csv",
+  "csv_encoding": "utf-8",
+  "power_col": "Power",
+  "freq_col": "Freq",
+  "timestamp_col": "Timestamp",
+  "col_base": 0,
+  "start_row": 0,
+  "max_rows": 0,
+
+  "serial_port": "/dev/ttyUSB0",
+  "baudrate": 115200,
+  "bytesize": 8,
+  "parity": "N",
+  "stopbits": 1,
+  "timeout": 1.0,
+  "write_timeout": 1.0,
+  "serial_encoding": "utf-8",
+
+  "interval_sec": 1.0,
+  "loop": false,
+  "dry_run": true,
+  "verbose": false,
+
+  "power_precision": 3,
+  "freq_precision": 3,
+  "frame_template": "BEGIN:{freq:.3f},{power:.3f}END\n"
+}
