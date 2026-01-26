@@ -7,13 +7,13 @@
   python convert_pmu_csv.py --config config.json
 
 配置说明：
-  - JSON：键名与命令行参数一致，如 {"input":"test-data","timestamp":"时间段",...}
+  - JSON：键名与命令行参数一致，如 {"input":"../../Tests/test-data","timestamp":"时间段",...}
   - INI：使用 [main] 段，键名同上
 
 设计要点：
 - 自动识别常见编码(utf-8-sig/gbk/gb2312)，并规范化表头空白
 - 时间戳支持多格式/epoch，输出三列并按起止时间命名文件
-- 支持输入文件夹批处理（默认 test-data），输出到目录（默认 output-test-data）
+- 支持输入文件夹批处理（默认 ../../Tests/test-data），输出到目录（默认 ../../Tests/output-test-data）
 - Freq 可按转速 rpm 转成 Hz（/60）
 """
 import argparse
@@ -23,6 +23,20 @@ import datetime as dt
 import json
 import pathlib
 import sys
+
+
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+DEFAULT_INPUT = "../../Tests/test-data"
+DEFAULT_OUTPUT_DIR = "../../Tests/output-test-data"
+
+
+def resolve_path(path: str) -> pathlib.Path:
+    if not path:
+        return pathlib.Path(path)
+    p = pathlib.Path(path)
+    if p.is_absolute():
+        return p
+    return SCRIPT_DIR / p
 
 
 TS_FORMATS = [
@@ -379,7 +393,8 @@ def main() -> int:
     pre_parser = argparse.ArgumentParser(add_help=False)
     pre_parser.add_argument("--config", default="", help="配置文件(json/ini)")
     pre_args, remaining = pre_parser.parse_known_args()
-    config = load_config(pre_args.config) if pre_args.config else {}
+    config_path = resolve_path(pre_args.config) if pre_args.config else None
+    config = load_config(str(config_path)) if config_path else {}
     config = {k: v for k, v in config.items() if v is not None}
 
     parser = argparse.ArgumentParser(
@@ -389,8 +404,8 @@ def main() -> int:
     parser.add_argument(
         "-i",
         "--input",
-        default="test-data",
-        help="输入CSV文件或目录(默认 test-data)",
+        default=DEFAULT_INPUT,
+        help=f"输入CSV文件或目录(默认 {DEFAULT_INPUT})",
     )
     parser.add_argument("--timestamp", help="时间戳列名或列序号")
     parser.add_argument("--power", help="Power列名")
@@ -408,7 +423,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         default="",
-        help="输出目录(目录模式，默认 output-test-data)",
+        help=f"输出目录(目录模式，默认 {DEFAULT_OUTPUT_DIR})",
     )
     parser.add_argument("--pattern", default="*.csv", help="目录模式下文件匹配(默认 *.csv)")
     parser.add_argument("--recursive", action="store_true", help="目录模式递归查找CSV")
@@ -432,7 +447,12 @@ def main() -> int:
         print("请通过命令行或配置文件提供。", file=sys.stderr)
         return 2
 
-    input_path = pathlib.Path(args.input)
+    if args.output:
+        args.output = str(resolve_path(args.output))
+    if args.output_dir:
+        args.output_dir = str(resolve_path(args.output_dir))
+
+    input_path = resolve_path(args.input)
     try:
         input_files = collect_input_files(input_path, args.pattern, args.recursive)
     except SystemExit as exc:
@@ -450,10 +470,11 @@ def main() -> int:
         if not output_dir_arg:
             output_dir_arg = args.output.strip()
         if not output_dir_arg:
-            output_dir_arg = "output-test-data"
+            output_dir_arg = DEFAULT_OUTPUT_DIR
         args.output = ""
 
     if output_dir_arg:
+        output_dir_arg = str(resolve_path(output_dir_arg))
         pathlib.Path(output_dir_arg).mkdir(parents=True, exist_ok=True)
 
     total_written = 0

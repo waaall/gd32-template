@@ -1,5 +1,5 @@
 {
-  "csv_path": "output-test-data/example.csv",
+  "csv_path": "../../Tests/output-test-data/example.csv",
   "csv_encoding": "utf-8",
   "power_col": "Power",
   "freq_col": "Freq",
@@ -21,6 +21,7 @@
   "loop": false,
   "dry_run": true,
   "verbose": false,
+  "debug": false,
 
   "power_precision": 3,
   "freq_precision": 3,

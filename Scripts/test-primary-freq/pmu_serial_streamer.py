@@ -4,7 +4,7 @@ PMU CSV 串口发送器（按固定周期发送 Power/Freq 到 STM32）。
 
 用法:
   python pmu_serial_streamer.py --config serial_streamer_config.json
-  python pmu_serial_streamer.py --csv output-test-data/example.csv --port /dev/ttyUSB0
+  python pmu_serial_streamer.py --csv ../../Tests/output-test-data/example.csv --port /dev/ttyUSB0
   python pmu_serial_streamer.py --list-ports
 
 设计要点:
@@ -19,6 +19,7 @@ import argparse
 import csv
 import dataclasses
 import json
+import logging
 import pathlib
 import sys
 import time
@@ -31,12 +32,34 @@ except ImportError:  # pragma: no cover - optional dependency
     serial = None
     list_ports = None
 
+# 配置日志格式
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 DEFAULT_FRAME_TEMPLATE = "BEGIN:{freq:.3f},{power:.3f}END\n"
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 
+
+def resolve_path(path: str) -> pathlib.Path:
+    if not path:
+        return pathlib.Path(path)
+    p = pathlib.Path(path)
+    if p.is_absolute():
+        return p
+    return SCRIPT_DIR / p
+
+
+# ============================================================================
+# 配置数据类
+# ============================================================================
 
 @dataclasses.dataclass
 class SerialConfig:
+    """串口配置参数"""
     port: str
     baudrate: int = 115200
     bytesize: int = 8
@@ -49,31 +72,35 @@ class SerialConfig:
 
 @dataclasses.dataclass
 class CsvConfig:
+    """CSV文件配置参数"""
     path: str
     power_col: str = "Power"
     freq_col: str = "Freq"
     timestamp_col: str = "Timestamp"
-    col_base: int = 0
+    col_base: int = 0           # 列索引起始值(0或1)
     encoding: str = "utf-8"
-    start_row: int = 0
-    max_rows: Optional[int] = None
+    start_row: int = 0          # 跳过前N行数据
+    max_rows: Optional[int] = None  # 最大读取行数
 
 
 @dataclasses.dataclass
 class StreamConfig:
-    interval_sec: float = 1.0
-    loop: bool = False
-    dry_run: bool = False
-    verbose: bool = False
+    """数据流发送配置"""
+    interval_sec: float = 1.0   # 发送间隔(秒)
+    loop: bool = False          # 是否循环发送
+    dry_run: bool = False       # 仅输出不实际发送
+    verbose: bool = False       # 详细输出模式
 
 
 @dataclasses.dataclass
 class FormatConfig:
+    """帧格式配置"""
     frame_template: str = ""
-    power_precision: int = 3
-    freq_precision: int = 3
+    power_precision: int = 3    # 功率小数位数
+    freq_precision: int = 3     # 频率小数位数
 
     def resolved_template(self) -> str:
+        """返回最终使用的帧模板"""
         if self.frame_template:
             return self.frame_template
         return (
@@ -84,25 +111,37 @@ class FormatConfig:
 
 @dataclasses.dataclass
 class RowData:
+    """单行CSV数据"""
     timestamp: str
     power: float
     freq: float
 
 
+# ============================================================================
+# CSV数据源类
+# ============================================================================
+
 class CsvSource:
+    """CSV文件数据源，负责读取和解析CSV文件"""
+
     def __init__(self, config: CsvConfig, template: str) -> None:
         self._config = config
         self._template = template
 
     def iter_rows(self) -> Iterator[RowData]:
+        """迭代返回CSV中的每一行数据"""
         path = pathlib.Path(self._config.path)
         if not path.exists():
+            logger.error(f"CSV文件不存在: {path}")
             raise SystemExit(f"CSV not found: {path}")
+
+        logger.info(f"打开CSV文件: {path}")
 
         with path.open("r", encoding=self._config.encoding, newline="") as f:
             reader = csv.reader(f)
             header = next(reader, None)
             if not header:
+                logger.error("CSV文件无表头")
                 raise SystemExit("CSV file has no header")
 
             # 解析列索引（支持列名或列序号）
@@ -111,13 +150,18 @@ class CsvSource:
             freq_idx = resolve_col(header_norm, self._config.freq_col, self._config.col_base)
             ts_idx = resolve_col(header_norm, self._config.timestamp_col, self._config.col_base)
 
+            logger.info(f"列索引 - Power: {power_idx}, Freq: {freq_idx}, Timestamp: {ts_idx}")
+
             # 模板包含 timestamp 时必须提供对应列
             needs_ts = "{timestamp" in self._template
             if power_idx is None or power_idx < 0:
+                logger.error(f"未找到Power列: {self._config.power_col}")
                 raise SystemExit(f"Power column not found: {self._config.power_col}")
             if freq_idx is None or freq_idx < 0:
+                logger.error(f"未找到Freq列: {self._config.freq_col}")
                 raise SystemExit(f"Freq column not found: {self._config.freq_col}")
             if needs_ts and (ts_idx is None or ts_idx < 0):
+                logger.error(f"未找到Timestamp列: {self._config.timestamp_col}")
                 raise SystemExit(
                     f"Timestamp column not found: {self._config.timestamp_col}"
                 )
@@ -136,6 +180,7 @@ class CsvSource:
                     row_index += 1
                     continue
                 if self._config.max_rows is not None and yielded >= self._config.max_rows:
+                    logger.info(f"已达到最大行数限制: {self._config.max_rows}")
                     break
 
                 # 解析数值，失败则跳过
@@ -150,12 +195,22 @@ class CsvSource:
                 yielded += 1
                 row_index += 1
 
+            logger.info(f"CSV读取完成，共处理 {yielded} 行数据")
+
+
+# ============================================================================
+# 帧格式化类
+# ============================================================================
 
 class FrameFormatter:
+    """数据帧格式化器，将RowData转换为发送帧"""
+
     def __init__(self, config: FormatConfig) -> None:
         self._template = config.resolved_template()
+        logger.info(f"帧模板: {repr(self._template)}")
 
     def format(self, row: RowData) -> str:
+        """格式化单行数据为发送帧"""
         return self._template.format(
             power=row.power,
             freq=row.freq,
@@ -167,29 +222,51 @@ class FrameFormatter:
         return self._template
 
 
+# ============================================================================
+# 串口写入类
+# ============================================================================
+
 class SerialWriter:
+    """串口写入器，负责数据的实际发送"""
+
     def __init__(self, config: SerialConfig, dry_run: bool) -> None:
         self._config = config
         self._dry_run = dry_run
         self._serial = None
+        self._bytes_sent = 0  # 统计发送字节数
 
-        # dry-run: 不打开串口，直接输出
+        # dry-run模式: 不打开串口，直接输出到stdout
         if self._dry_run:
+            logger.info("Dry-run模式: 数据将输出到stdout而非串口")
             return
+
         if serial is None:
+            logger.error("pyserial未安装，无法使用串口")
             raise SystemExit("pyserial is not installed. Use --dry-run or install pyserial.")
 
-        self._serial = serial.Serial(
-            port=self._config.port,
-            baudrate=self._config.baudrate,
-            bytesize=self._config.bytesize,
-            parity=self._config.parity,
-            stopbits=self._config.stopbits,
-            timeout=self._config.timeout,
-            write_timeout=self._config.write_timeout,
-        )
+        # 打开串口连接
+        logger.info(f"正在连接串口 {self._config.port}...")
+        try:
+            self._serial = serial.Serial(
+                port=self._config.port,
+                baudrate=self._config.baudrate,
+                bytesize=self._config.bytesize,
+                parity=self._config.parity,
+                stopbits=self._config.stopbits,
+                timeout=self._config.timeout,
+                write_timeout=self._config.write_timeout,
+            )
+            logger.info(
+                f"串口连接成功: {self._config.port} "
+                f"(波特率={self._config.baudrate}, 数据位={self._config.bytesize}, "
+                f"校验={self._config.parity}, 停止位={self._config.stopbits})"
+            )
+        except serial.SerialException as e:
+            logger.error(f"串口连接失败: {e}")
+            raise SystemExit(f"Failed to open serial port: {e}")
 
     def write(self, frame: str) -> None:
+        """写入一帧数据"""
         if self._dry_run:
             sys.stdout.write(frame)
             sys.stdout.flush()
@@ -198,13 +275,22 @@ class SerialWriter:
             raise RuntimeError("Serial port not initialized")
         data = frame.encode(self._config.encoding)
         self._serial.write(data)
+        self._bytes_sent += len(data)
 
     def close(self) -> None:
+        """关闭串口连接"""
         if self._serial:
+            logger.info(f"关闭串口连接，共发送 {self._bytes_sent} 字节")
             self._serial.close()
 
 
+# ============================================================================
+# PMU串口流发送器
+# ============================================================================
+
 class PmuSerialStreamer:
+    """PMU数据流发送主控类，协调各模块完成定时发送"""
+
     def __init__(
         self,
         csv_source: CsvSource,
@@ -218,9 +304,15 @@ class PmuSerialStreamer:
         self._stream_config = stream_config
 
     def run(self) -> int:
+        """启动发送循环，返回退出码"""
         # 使用单调时钟计算节拍，降低累计漂移
         interval = max(self._stream_config.interval_sec, 0.0)
         next_time = time.monotonic()
+
+        logger.info(
+            f"开始发送数据 (间隔={interval}s, 循环={self._stream_config.loop})"
+        )
+        sent_count = 0
 
         try:
             while True:
@@ -229,35 +321,56 @@ class PmuSerialStreamer:
                     now = time.monotonic()
                     if interval > 0 and now < next_time:
                         time.sleep(next_time - now)
+
                     frame = self._formatter.format(row)
                     self._writer.write(frame)
+                    sent_count += 1
+
+                    # 记录发送的数据
                     if self._stream_config.verbose:
                         sys.stderr.write(f"Sent: {frame}")
+                    logger.debug(
+                        f"发送#{sent_count}: freq={row.freq:.3f}, power={row.power:.3f}"
+                    )
+
                     sent_any = True
                     next_time += interval
 
-                # 非循环模式：本轮 CSV 发送完就退出
+                # 非循环模式：本轮CSV发送完就退出
                 if not self._stream_config.loop:
+                    logger.info(f"发送完成，共发送 {sent_count} 帧")
                     return 0 if sent_any else 2
+
+                logger.info(f"本轮发送完成({sent_count}帧)，开始下一轮循环")
+        except KeyboardInterrupt:
+            logger.info(f"用户中断，共发送 {sent_count} 帧")
+            return 0
         finally:
             self._writer.close()
 
 
+# ============================================================================
+# 辅助函数
+# ============================================================================
+
 def normalize_header(cell: str) -> str:
-    # 统一表头空白与 BOM
+    """统一表头空白与BOM字符"""
     return " ".join(str(cell).strip().lstrip("\ufeff").split())
 
 
 def resolve_col(header: list[str], name: str, col_base: int) -> Optional[int]:
-    # 支持列名或列序号
+    """解析列索引，支持列名或列序号"""
     if name is None:
         return None
     spec = str(name).strip()
+    # 数字直接作为索引
     if spec.isdigit():
         return int(spec) - col_base
+    # 按列名查找(精确匹配)
     target = normalize_header(spec)
     if target in header:
         return header.index(target)
+    # 按列名查找(忽略大小写)
     lower_header = [h.lower() for h in header]
     if target.lower() in lower_header:
         return lower_header.index(target.lower())
@@ -265,6 +378,7 @@ def resolve_col(header: list[str], name: str, col_base: int) -> Optional[int]:
 
 
 def parse_float(value: str) -> Optional[float]:
+    """安全解析浮点数，失败返回None"""
     try:
         return float(str(value).strip())
     except ValueError:
@@ -272,6 +386,7 @@ def parse_float(value: str) -> Optional[float]:
 
 
 def coerce_bool(value) -> bool:
+    """将各种类型转换为布尔值"""
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
@@ -280,12 +395,14 @@ def coerce_bool(value) -> bool:
 
 
 def load_config(path: str) -> dict:
-    # 读取 JSON 配置
+    """读取JSON配置文件"""
     if not path:
         return {}
     config_path = pathlib.Path(path)
     if not config_path.exists():
+        logger.error(f"配置文件不存在: {config_path}")
         raise SystemExit(f"Config not found: {config_path}")
+    logger.info(f"加载配置文件: {config_path}")
     with config_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
@@ -294,21 +411,24 @@ def load_config(path: str) -> dict:
 
 
 def list_serial_ports() -> int:
-    # 枚举串口设备
+    """枚举并打印所有可用串口"""
     if list_ports is None:
+        logger.error("pyserial未安装，无法列出串口")
         print("pyserial is not installed.")
         return 1
     ports = list(list_ports.comports())
     if not ports:
+        logger.info("未发现任何串口设备")
         print("No serial ports found.")
         return 1
+    logger.info(f"发现 {len(ports)} 个串口设备")
     for port in ports:
         print(f"{port.device} - {port.description}")
     return 0
 
 
 def build_config(args: argparse.Namespace) -> tuple[SerialConfig, CsvConfig, StreamConfig, FormatConfig]:
-    # 将命令行参数组装成配置对象
+    """将命令行参数组装成配置对象"""
     serial_config = SerialConfig(
         port=args.port,
         baudrate=args.baudrate,
@@ -340,6 +460,12 @@ def build_config(args: argparse.Namespace) -> tuple[SerialConfig, CsvConfig, Str
         power_precision=args.power_precision,
         freq_precision=args.freq_precision,
     )
+
+    # 记录配置信息
+    logger.debug(f"串口配置: port={serial_config.port}, baudrate={serial_config.baudrate}")
+    logger.debug(f"CSV配置: path={csv_config.path}, start_row={csv_config.start_row}")
+    logger.debug(f"发送配置: interval={stream_config.interval_sec}s, loop={stream_config.loop}")
+
     return serial_config, csv_config, stream_config, format_config
 
 
@@ -349,7 +475,8 @@ def parse_args() -> argparse.Namespace:
     pre.add_argument("--config", default="", help="JSON config file")
     pre_args, remaining = pre.parse_known_args()
 
-    config = load_config(pre_args.config) if pre_args.config else {}
+    config_path = resolve_path(pre_args.config) if pre_args.config else None
+    config = load_config(str(config_path)) if config_path else {}
     config = {k: v for k, v in config.items() if v is not None}
 
     parser = argparse.ArgumentParser(description="Stream PMU CSV to STM32 over serial")
@@ -389,6 +516,13 @@ def parse_args() -> argparse.Namespace:
         "--verbose",
         action=argparse.BooleanOptionalAction,
         default=coerce_bool(config.get("verbose", False)),
+        help="详细输出模式(显示每帧发送)",
+    )
+    parser.add_argument(
+        "--debug",
+        action=argparse.BooleanOptionalAction,
+        default=coerce_bool(config.get("debug", False)),
+        help="调试模式(显示DEBUG级别日志)",
     )
 
     parser.add_argument(
@@ -403,6 +537,9 @@ def parse_args() -> argparse.Namespace:
     if args.list_ports:
         return args
 
+    if args.csv:
+        args.csv = str(resolve_path(args.csv))
+
     # 必要参数校验
     if not args.csv:
         parser.error("--csv is required (or provide csv_path in config)")
@@ -413,9 +550,20 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """程序入口"""
     args = parse_args()
+
+    # 设置日志级别(--debug 显示DEBUG级别)
+    if hasattr(args, 'debug') and args.debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.DEBUG)
+
     if args.list_ports:
         return list_serial_ports()
+
+    logger.info("=" * 50)
+    logger.info("PMU串口发送器启动")
+    logger.info("=" * 50)
 
     # 组装各模块并启动发送
     serial_config, csv_config, stream_config, format_config = build_config(args)
@@ -423,7 +571,10 @@ def main() -> int:
     csv_source = CsvSource(csv_config, formatter.template)
     writer = SerialWriter(serial_config, stream_config.dry_run)
     streamer = PmuSerialStreamer(csv_source, formatter, writer, stream_config)
-    return streamer.run()
+
+    result = streamer.run()
+    logger.info("PMU串口发送器退出")
+    return result
 
 
 if __name__ == "__main__":

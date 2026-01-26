@@ -92,7 +92,7 @@ python pmu_serial_streamer.py --config serial_streamer_config.json
 
 ```
 python pmu_serial_streamer.py \
-  --csv output-test-data/example.csv \
+  --csv ../../Tests/output-test-data/example.csv \
   --port /dev/ttyUSB0 \
   --interval 1.0
 ```
@@ -107,4 +107,3 @@ python pmu_serial_streamer.py --list-ports
 
 - Python 3.10+
 - `pyserial`（真实写串口时需要）
-
