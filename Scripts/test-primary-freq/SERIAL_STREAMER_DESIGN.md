@@ -32,6 +32,7 @@ Timestamp,Power,Freq
 - 通过列名或列序号定位 `Power/Freq/Timestamp`
 - 支持 `start_row` 跳过前 N 行
 - 支持 `max_rows` 限制总发送条数
+- 支持 `start_time` 从指定时间开始发送
 - 无效行（空行或非数值）会被跳过
 
 ### 2) FrameFormatter
@@ -63,6 +64,7 @@ Timestamp,Power,Freq
   - `col_base`: 列序号基准（0 或 1）
   - `start_row`: 跳过前 N 行数据
   - `max_rows`: 最大发送条数（0 表示不限制）
+  - `start_time`: 开始时间（见下文格式说明）
 
 - 串口
   - `serial_port`: 串口设备名，例如 `/dev/ttyUSB0`
@@ -102,6 +104,29 @@ python pmu_serial_streamer.py \
 ```
 python pmu_serial_streamer.py --list-ports
 ```
+
+### 4) 从指定时间开始
+
+```
+python pmu_serial_streamer.py \
+  --config serial_streamer_config.json \
+  --start-time "2020-05-07-05:30" \
+  --dry-run
+```
+
+**开始时间格式**（支持多种分隔符 `-` `.` `:` 空格）：
+
+| 输入格式 | 匹配行为 |
+|---------|---------|
+| `2020-05-07-05:30` | 从 `2020-05-07 05:30:xx` 的第一条开始 |
+| `2020-05-07-05:30:10` | 从 `2020-05-07 05:30:10` 开始 |
+| `2020-05-07-05` | 从 `2020-05-07 05:00:xx` 开始 |
+| `2020.05.07.05.30` | 同 `2020-05-07-05:30` |
+
+**匹配逻辑**：
+- 优先前缀匹配：找到时间戳以指定前缀开头的第一条
+- 若无精确匹配：找到 ≥ 指定时间的第一条，并输出 WARNING
+- 若超出 CSV 范围：报错退出
 
 ## 依赖
 

@@ -1,5 +1,5 @@
 {
-  "csv_path": "../../Tests/output-test-data/example.csv",
+  "csv_path": "../../Tests/output-test-data/2020.05.07.00.00.00-2020.05.07.12.00.00.csv",
   "csv_encoding": "utf-8",
   "power_col": "Power",
   "freq_col": "Freq",
@@ -7,8 +7,9 @@
   "col_base": 0,
   "start_row": 0,
   "max_rows": 0,
+  "start_time": "2020-05-07-05:52",
 
-  "serial_port": "/dev/ttyUSB0",
+  "serial_port": "COM3",
   "baudrate": 115200,
   "bytesize": 8,
   "parity": "N",
@@ -21,7 +22,7 @@
   "loop": false,
   "dry_run": true,
   "verbose": false,
-  "debug": false,
+  "debug": true,
 
   "power_precision": 3,
   "freq_precision": 3,

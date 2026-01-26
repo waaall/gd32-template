@@ -5,10 +5,16 @@ PMU CSV 串口发送器（按固定周期发送 Power/Freq 到 STM32）。
 用法:
   python pmu_serial_streamer.py --config serial_streamer_config.json
   python pmu_serial_streamer.py --csv ../../Tests/output-test-data/example.csv --port /dev/ttyUSB0
+  python pmu_serial_streamer.py --start-time "2020-05-07-05:30" --dry-run  # 从指定时间开始
   python pmu_serial_streamer.py --list-ports
 
+开始时间格式（--start-time）:
+  2020-05-07-05:30    → 从 05:30:00 开始
+  2020-05-07-05:30:10 → 从 05:30:10 开始
+  2020-05-07-05       → 从 05:00:00 开始
+
 设计要点:
-  - CsvSource: 读取 CSV/解析列/筛选行
+  - CsvSource: 读取 CSV/解析列/筛选行/时间筛选
   - FrameFormatter: 按模板组帧（支持 {freq} {power} {timestamp}）
   - SerialWriter: 串口写入或 dry-run 输出
   - PmuSerialStreamer: 定时发送/可循环
@@ -81,6 +87,7 @@ class CsvConfig:
     encoding: str = "utf-8"
     start_row: int = 0          # 跳过前N行数据
     max_rows: Optional[int] = None  # 最大读取行数
+    start_time: Optional[str] = None  # 开始时间前缀
 
 
 @dataclasses.dataclass
@@ -166,6 +173,16 @@ class CsvSource:
                     f"Timestamp column not found: {self._config.timestamp_col}"
                 )
 
+            # 开始时间筛选初始化
+            start_time_prefix = None
+            if self._config.start_time:
+                start_time_prefix = _normalize_time_input(self._config.start_time)
+                logger.info(f"指定开始时间前缀: {start_time_prefix}")
+
+            found_start = (start_time_prefix is None)  # 无指定则默认已找到
+            warned_approx = False
+            last_timestamp = None  # 记录最后时间戳用于边界检查
+
             row_index = 0
             yielded = 0
             for row in reader:
@@ -183,6 +200,29 @@ class CsvSource:
                     logger.info(f"已达到最大行数限制: {self._config.max_rows}")
                     break
 
+                # 获取当前行时间戳
+                timestamp = str(row[ts_idx]).strip() if ts_idx is not None else ""
+                last_timestamp = timestamp
+
+                # 开始时间筛选逻辑
+                if not found_start and start_time_prefix:
+                    if timestamp.startswith(start_time_prefix):
+                        # 精确前缀匹配
+                        found_start = True
+                        logger.info(f"找到开始时间: {timestamp}")
+                    elif timestamp >= start_time_prefix:
+                        # 近似匹配：实际时间 > 指定时间
+                        found_start = True
+                        if not warned_approx:
+                            logger.warning(
+                                f"未找到精确匹配 '{start_time_prefix}'，"
+                                f"从最接近的时间开始: {timestamp}"
+                            )
+                            warned_approx = True
+                    else:
+                        row_index += 1
+                        continue  # 跳过早于指定时间的行
+
                 # 解析数值，失败则跳过
                 power_val = parse_float(row[power_idx])
                 freq_val = parse_float(row[freq_idx])
@@ -190,10 +230,19 @@ class CsvSource:
                     row_index += 1
                     continue
 
-                timestamp = str(row[ts_idx]).strip() if ts_idx is not None else ""
                 yield RowData(timestamp=timestamp, power=power_val, freq=freq_val)
                 yielded += 1
                 row_index += 1
+
+            # 循环结束后检查：若指定了start_time但从未找到匹配
+            if start_time_prefix and not found_start:
+                logger.error(
+                    f"指定时间 '{start_time_prefix}' 超出CSV数据范围 "
+                    f"(最后时间戳: {last_timestamp})"
+                )
+                raise SystemExit(
+                    f"Start time '{start_time_prefix}' is beyond CSV data range"
+                )
 
             logger.info(f"CSV读取完成，共处理 {yielded} 行数据")
 
@@ -385,6 +434,46 @@ def parse_float(value: str) -> Optional[float]:
         return None
 
 
+def _normalize_time_input(user_input: str) -> str:
+    """
+    规范化用户时间输入，转换为CSV时间戳前缀格式。
+
+    支持多种分隔符(- . : 空格)，输出格式: YYYY-MM-DD HH:MM:SS（按输入精度截断）
+
+    示例:
+      '2020-05-07-05:50'    → '2020-05-07 05:50'
+      '2020.05.07.05.50.10' → '2020-05-07 05:50:10'
+      '2020-05-07-05'       → '2020-05-07 05'
+    """
+    import re
+    # 统一分隔符：将所有非数字字符替换为单个分隔符
+    parts = re.split(r'[^\d]+', user_input.strip())
+    parts = [p for p in parts if p]  # 移除空字符串
+
+    if len(parts) < 3:
+        return user_input  # 格式不足，原样返回
+
+    # 构建规范化时间字符串
+    # 日期部分: YYYY-MM-DD
+    year = parts[0].zfill(4)
+    month = parts[1].zfill(2)
+    day = parts[2].zfill(2)
+    result = f"{year}-{month}-{day}"
+
+    # 时间部分: HH:MM:SS（可选）
+    if len(parts) >= 4:
+        hour = parts[3].zfill(2)
+        result += f" {hour}"
+        if len(parts) >= 5:
+            minute = parts[4].zfill(2)
+            result += f":{minute}"
+            if len(parts) >= 6:
+                second = parts[5].zfill(2)
+                result += f":{second}"
+
+    return result
+
+
 def coerce_bool(value) -> bool:
     """将各种类型转换为布尔值"""
     if isinstance(value, bool):
@@ -448,6 +537,7 @@ def build_config(args: argparse.Namespace) -> tuple[SerialConfig, CsvConfig, Str
         encoding=args.csv_encoding,
         start_row=args.start_row,
         max_rows=None if args.max_rows <= 0 else args.max_rows,
+        start_time=args.start_time if args.start_time else None,
     )
     stream_config = StreamConfig(
         interval_sec=args.interval,
@@ -491,6 +581,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--col-base", type=int, choices=[0, 1], default=config.get("col_base", 0))
     parser.add_argument("--start-row", type=int, default=config.get("start_row", 0))
     parser.add_argument("--max-rows", type=int, default=config.get("max_rows") or 0)
+    parser.add_argument(
+        "--start-time",
+        default=config.get("start_time", ""),
+        help="开始时间(如 2020-05-07-05:50 或 2020-05-07-05)",
+    )
 
     parser.add_argument("--port", default=config.get("serial_port", ""), help="Serial port")
     parser.add_argument("--baudrate", type=int, default=config.get("baudrate", 115200))
