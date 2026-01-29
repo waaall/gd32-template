@@ -4,6 +4,8 @@
 - `app/src/PrimaryFrequency/Service/Realtime/IncrementalCalculator.cpp`
 - `app/src/PrimaryFrequency/Service/Realtime/ActionStateMachine.cpp`
 
+目前计算流程还有点问题。
+
 详细算法说明参见 `doc/phase2/realtime-calculation-flow.md`
 
 ## 依赖
@@ -73,7 +75,7 @@ python main.py -i input.csv --rated-power 350 --dead-zone 0.033 --speed-ratio 0.
 | `--power-col` | 功率列名 | Power |
 | `--quality-col` | 质量码列名 | quality |
 | `--timestamp-format` | 时间戳格式 | %Y-%m-%d %H:%M:%S |
- 
+
 
 ### 时间范围
 | 参数 | 说明 |
