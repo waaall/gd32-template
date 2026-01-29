@@ -1,0 +1,17 @@
+# 一次调频离线计算脚本依赖
+# Python >= 3.8
+
+# 无外部依赖，仅使用 Python 标准库
+# - csv: CSV 文件读写
+# - json: JSON 文件读写
+# - dataclasses: 数据类定义
+# - datetime: 时间处理
+# - logging: 日志记录
+# - argparse: 命令行解析
+# - enum: 枚举类型
+# - pathlib: 路径处理
+# - typing: 类型注解
+
+# 可选依赖（用于开发和测试）
+# pytest>=7.0.0       # 单元测试
+# pytest-cov>=4.0.0   # 测试覆盖率

@@ -14,6 +14,7 @@ temp*
 *.csv
 test-data/
 output-test-data/
+output.json
 
 # Prerequisites
 *.d

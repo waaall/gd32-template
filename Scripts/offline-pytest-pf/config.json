@@ -1,0 +1,37 @@
+{
+  "unit": {
+    "unitId": "default",
+    "ratedPower": 600.0,
+    "speedRatio": 0.05,
+    "limitCoefficient": null
+  },
+  "global": {
+    "deadZone": 0.033,
+    "ratedFrequency": 50.0,
+    "endHoldSec": 1,
+    "windowsSec": [15, 30, 60]
+  },
+  "formula": {
+    "deltaFMode": "DeadZoneExcess",
+    "initialPowerAvgWindowSec": 10,
+    "qualificationCap": 1.0,
+    "speedRatioFallback": 0.05,
+    "largeDisturbanceThreshold": 0.06
+  },
+  "io": {
+    "inputFile": "../../Tests/output-test-data/2020.05.07.00.00.00-2020.05.07.12.00.00.csv",
+    "outputFile": "sample_data/output.json",
+    "startTime": "2020-05-07 05:52:03",
+    "endTime": "2020-05-07 05:52:34",
+    "timestampFormat": "%Y-%m-%d %H:%M:%S",
+    "timestampColumn": "Timestamp",
+    "frequencyColumn": "Freq",
+    "powerColumn": "Power",
+    "qualityColumn": "quality"
+  },
+  "logging": {
+    "level": "INFO",
+    "logFile": null
+  },
+  "includeShortActionsInSummary": false
+}
