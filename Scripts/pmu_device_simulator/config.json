@@ -36,8 +36,8 @@
     "path": "params_state.json"
   },
   "logging": {
-    "log_level": "INFO",
-    "log_file": "",
-    "log_hex_frames": false
+    "log_level": "DEBUG",
+    "log_file": "./pmu_device_simulator.log",
+    "log_hex_frames": true
   }
 }

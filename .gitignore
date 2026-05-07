@@ -71,3 +71,4 @@ Mkfile.old
 dkms.conf
 
 *.pyc
+*.log
