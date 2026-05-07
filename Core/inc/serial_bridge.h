@@ -1,9 +1,9 @@
 /**
-  ******************************************************************************
-  * @file    serial_bridge.h
-  * @brief   Modular Serial Bridge for forwarding data between UARTs
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    serial_bridge.h
+ * @brief   Transparent bidirectional UART bridge
+ ******************************************************************************
+ */
 
 #ifndef __SERIAL_BRIDGE_H
 #define __SERIAL_BRIDGE_H
@@ -11,72 +11,72 @@
 #include "usart.h"
 
 /* Config --------------------------------------------------------------------*/
-#define SB_BUFFER_SIZE  256   // Size of each RX buffer (Double buffering)
-#define SB_FRAME_BUFFER_SIZE  256  // 单帧缓存大小（需覆盖完整帧长度）
-#define SB_TX_QUEUE_DEPTH     4    // 发送队列深度（满则丢帧）
+#define SB_BUFFER_SIZE 256U
+#define SB_TX_QUEUE_DEPTH 8U
+#define SB_DIRECTION_COUNT 2U
 
 /* Types ---------------------------------------------------------------------*/
 
 typedef struct {
-    UART_HandleTypeDef *huart_src;      // Source UART (RX)
-    UART_HandleTypeDef *huart_dst;      // Destination UART (TX)
-    
-    // Double buffering for RX
-    uint8_t rx_buf[2][SB_BUFFER_SIZE];
-    volatile uint8_t rx_idx;            // Current buffer index (0 or 1)
+  UART_HandleTypeDef *huart_rx;
+  UART_HandleTypeDef *huart_tx;
 
-    // 帧缓存与解析状态
-    uint8_t frame_buf[SB_FRAME_BUFFER_SIZE];
-    uint16_t frame_len;
-    uint8_t frame_in_progress;
-    uint8_t begin_match;
-    uint8_t end_match;
+  uint8_t rx_buf[2][SB_BUFFER_SIZE];
+  volatile uint8_t rx_idx;
 
-    // 发送队列（帧完整后再发送）
-    struct {
-        uint8_t data[SB_FRAME_BUFFER_SIZE];
-        uint16_t len;
-    } tx_queue[SB_TX_QUEUE_DEPTH];
-    uint8_t tx_head;
-    uint8_t tx_tail;
-    uint8_t tx_count;
-    uint8_t tx_active;
-    
-    // Status
-    uint8_t initialized;
+  struct {
+    uint8_t data[SB_BUFFER_SIZE];
+    uint16_t len;
+  } tx_queue[SB_TX_QUEUE_DEPTH];
+
+  volatile uint8_t tx_head;
+  volatile uint8_t tx_tail;
+  volatile uint8_t tx_count;
+  volatile uint8_t tx_active;
+
+  volatile uint16_t rx_restart_errors;
+  volatile uint16_t tx_drop_count;
+  volatile uint16_t tx_error_count;
+} SerialBridgeDirection_t;
+
+typedef struct {
+  SerialBridgeDirection_t dir[SB_DIRECTION_COUNT];
+  uint8_t initialized;
 } SerialBridge_t;
 
 /* Public Functions ----------------------------------------------------------*/
 
 /**
- * @brief  Initialize a serial bridge channel
- * @param  bridge: Pointer to bridge structure
- * @param  src: Source UART handle (where data comes in)
- * @param  dst: Destination UART handle (where data goes out)
- * @retval 0 on success
+ * @brief  Initialize a transparent bidirectional bridge between two UARTs.
+ * @param  bridge: Pointer to bridge structure.
+ * @param  uart_a: First UART endpoint.
+ * @param  uart_b: Second UART endpoint.
+ * @retval 0 on success.
  */
-int SB_Init(SerialBridge_t *bridge, UART_HandleTypeDef *src, UART_HandleTypeDef *dst);
+int SB_Init(SerialBridge_t *bridge, UART_HandleTypeDef *uart_a,
+            UART_HandleTypeDef *uart_b);
 
 /**
- * @brief  Handle RX Event (Call this from HAL_UARTEx_RxEventCallback)
- * @param  bridge: Pointer to bridge structure
- * @param  huart: Handle of the UART that triggered the event
- * @param  size: Number of bytes received
- * @retval 1 if handled, 0 if not relevant to this bridge
+ * @brief  Handle RX idle/DMA event.
+ * @param  bridge: Pointer to bridge structure.
+ * @param  huart: UART that received bytes.
+ * @param  size: Number of bytes received in this chunk.
+ * @retval 1 if handled, 0 if not relevant to this bridge.
  */
-int SB_HandleRxEvent(SerialBridge_t *bridge, UART_HandleTypeDef *huart, uint16_t size);
+int SB_HandleRxEvent(SerialBridge_t *bridge, UART_HandleTypeDef *huart,
+                     uint16_t size);
 
 /**
- * @brief  Handle Error (Call this from HAL_UART_ErrorCallback)
- * @param  bridge: Pointer to bridge structure
- * @param  huart: Handle of the UART that triggered the error
+ * @brief  Handle UART error and re-arm the affected receive side.
+ * @param  bridge: Pointer to bridge structure.
+ * @param  huart: UART that triggered the error.
  */
 void SB_HandleError(SerialBridge_t *bridge, UART_HandleTypeDef *huart);
 
 /**
- * @brief  Handle TX Complete (Call this from HAL_UART_TxCpltCallback)
- * @param  bridge: Pointer to bridge structure
- * @param  huart: Handle of the UART that triggered the event
+ * @brief  Handle TX complete and send the next queued chunk.
+ * @param  bridge: Pointer to bridge structure.
+ * @param  huart: UART that completed transmission.
  */
 void SB_HandleTxCplt(SerialBridge_t *bridge, UART_HandleTypeDef *huart);
 

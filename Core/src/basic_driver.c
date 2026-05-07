@@ -78,7 +78,7 @@ void basic_init(void)
     // 配置 TIM10 用于ADC计算任务标志; 需要略大于周期*calc_periods,否则数据不全无法计算
     _update_timer_interval(&htim10, ADC_SRV_CALC_INTERVAL_MS);
 
-    // 串口转发初始化: USART3 (RX=PD9) -> USART1 (TX=PA9)
+    // 串口转发初始化: USART3 <-> USART1 透明双向转发
     (void)SB_Init(&bridge_u3_to_u1, &huart3, &huart1);
 }
 

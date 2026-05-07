@@ -59,8 +59,8 @@ static volatile uint8_t adc_srv_calc_pending = 0;
 static volatile uint8_t print_test_pending = 0;
 
 /* Serial Bridge Instance */
-// Config: Forward USART3 (RX=PD9) -> USART1 (TX=PA9)
-// Note: CTRL485 (PD10) is initialized to Low in gpio.c, enabling RS485 Reception on USART3.
+// Config: Transparent bidirectional bridge between USART3 and USART1.
+// Note: CTRL485 (PD10) is controlled by serial_bridge.c when USART3 transmits.
 SerialBridge_t bridge_u3_to_u1;
 
 /* USER CODE END PV */
@@ -173,7 +173,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
 {
   // Handle Serial Bridge Events
-  // USART3 (RX=PD9) -> USART1 (TX=PA9)
+  // USART3 <-> USART1 transparent bridge
   SB_HandleRxEvent(&bridge_u3_to_u1, huart, size);
 }
 
