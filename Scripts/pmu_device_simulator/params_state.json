@@ -1,0 +1,38 @@
+{
+  "config_version": 0,
+  "zero_crossing": {
+    "fake_period_ms": 2.0,
+    "window_periods": 10,
+    "min_freq_hz": 38.0,
+    "max_freq_hz": 65.0,
+    "inactivity_timeout_ms": 500
+  },
+  "ma_calibration": [
+    {
+      "zero_offset": 0,
+      "span_offset": 0,
+      "gain_10k": 10000
+    },
+    {
+      "zero_offset": 0,
+      "span_offset": 0,
+      "gain_10k": 10000
+    },
+    {
+      "zero_offset": 0,
+      "span_offset": 0,
+      "gain_10k": 10225
+    },
+    {
+      "zero_offset": 0,
+      "span_offset": 0,
+      "gain_10k": 10000
+    },
+    {
+      "zero_offset": 0,
+      "span_offset": 0,
+      "gain_10k": 10000
+    }
+  ]
+}
+

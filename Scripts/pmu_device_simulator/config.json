@@ -1,0 +1,42 @@
+{
+  "serial": {
+    "port": "/dev/tty.usbserial-pmu",
+    "dry_run": true,
+    "baudrate": 115200,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+    "timeout": 0,
+    "write_timeout": 1
+  },
+  "csv": {
+    "path": "../../../Tests/output-test-data/2020.05.07.00.00.00-2020.05.07.12.00.00.csv",
+    "encoding": "utf-8",
+    "timestamp_col": "Timestamp",
+    "power_col": "Power",
+    "freq_col": "Freq",
+    "col_base": 0,
+    "start_row": 0,
+    "max_rows": 0,
+    "start_time": "",
+    "source_interval_sec": 1.0,
+    "eof_behavior": "stop"
+  },
+  "stream": {
+    "auto_start": false,
+    "default_period_ms": 500,
+    "min_period_ms": 50,
+    "max_period_ms": 60000,
+    "ma_output_ready": true,
+    "poll_interval_ms": 5,
+    "exit_on_eof_in_dry_run": true
+  },
+  "params": {
+    "path": "params_state.json"
+  },
+  "logging": {
+    "log_level": "INFO",
+    "log_file": "",
+    "log_hex_frames": false
+  }
+}
