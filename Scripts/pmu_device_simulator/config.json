@@ -1,7 +1,7 @@
 {
   "serial": {
-    "port": "/dev/tty.usbserial-pmu",
-    "dry_run": true,
+    "port": "COM3",
+    "dry_run": false,
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
