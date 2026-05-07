@@ -31,6 +31,7 @@ python -m Scripts.pmu_device_simulator
   },
   "csv": {
     "path": "../../Tests/output-test-data/2020.05.07.00.00.00-2020.05.07.12.00.00.csv",
+    "power_unit": "MW",
     "source_interval_sec": 1.0,
     "eof_behavior": "stop"
   },
@@ -61,6 +62,8 @@ python -m Scripts.pmu_device_simulator
 3. 数据面把离线 CSV 伪装成实时遥测：按通信周期发送 `PF_BASIC` telemetry，让上位机看到的就是下位机当前协议版本的数据流。
 
 离线数据和通信周期是分开的。`csv.source_interval_sec` 表示 CSV 原始数据周期，`stream.default_period_ms` 或上位机 `STREAM_CTRL_REQ` 中的周期表示通信发送周期。例如 CSV 1 秒一行、通信周期 500 ms 时，同一行 CSV 会连续发送两次；通信周期 200 ms 时，同一行会发送五次。
+
+`csv.power_unit` 表示 CSV 中 `Power` 列的单位，支持 `W`、`kW`、`MW`（大小写不敏感）。模拟器会在读取 CSV 时转换为 W，再写入协议字段 `active_power_w_i32`。当前示例 CSV 的 `Power=185.028` 表示 `185.028 MW`，因此默认配置写为 `"power_unit": "MW"`。
 
 CSV 播放结束后的行为由 `csv.eof_behavior` 决定：
 
@@ -202,7 +205,7 @@ Timestamp,Power,Freq
 | `Freq` | `freq_a_millihz` | `round(freq_hz * 1000)` |
 | `Freq` | `freq_b_millihz` | 与 A 相相同 |
 | `Freq` | `freq_selected_millihz` | 与 A/B 相同 |
-| `Power` | `active_power_w_i32` | 四舍五入到整数 W |
+| `Power` | `active_power_w_i32` | 按 `csv.power_unit` 转换成 W 后，四舍五入到整数 W |
 
 默认置位的质量标志包括：
 
@@ -227,4 +230,3 @@ Timestamp,Power,Freq
 真实串口模式需要安装 `pyserial`。`dry_run` 模式不依赖串口，会把发送帧打印为十六进制，适合做协议编码检查，但不会接收上位机输入。
 
 如果要测试完整上位机交互，建议使用一对虚拟串口或 USB 串口交叉连接：上位机连接一端，模拟器连接另一端。
-

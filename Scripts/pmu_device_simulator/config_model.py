@@ -30,6 +30,7 @@ class CsvSettings:
     encoding: str = "utf-8"
     timestamp_col: str = "Timestamp"
     power_col: str = "Power"
+    power_unit: str = "W"
     freq_col: str = "Freq"
     col_base: int = 0
     start_row: int = 0
@@ -109,6 +110,7 @@ def load_settings(config_path: pathlib.Path = DEFAULT_CONFIG_PATH) -> SimulatorS
             encoding=_str(csv_raw, "encoding", "utf-8"),
             timestamp_col=_str(csv_raw, "timestamp_col", "Timestamp"),
             power_col=_str(csv_raw, "power_col", "Power"),
+            power_unit=_str(csv_raw, "power_unit", "W"),
             freq_col=_str(csv_raw, "freq_col", "Freq"),
             col_base=_int(csv_raw, "col_base", 0),
             start_row=_int(csv_raw, "start_row", 0),
@@ -193,9 +195,21 @@ def _bool_any(raw: dict[str, Any], keys: tuple[str, ...], default: bool) -> bool
     return default
 
 
+def _normalize_power_unit(value: str) -> str:
+    normalized = str(value).strip().lower()
+    if normalized == "w":
+        return "W"
+    if normalized == "kw":
+        return "kW"
+    if normalized == "mw":
+        return "MW"
+    raise SystemExit("csv.power_unit must be one of: W, kW, MW")
+
+
 def _validate_settings(settings: SimulatorSettings) -> None:
     if not settings.serial.dry_run and not settings.serial.port:
         raise SystemExit("serial.port is required when serial.dry_run is false")
+    settings.csv.power_unit = _normalize_power_unit(settings.csv.power_unit)
     if settings.csv.source_interval_sec <= 0:
         raise SystemExit("csv.source_interval_sec must be > 0")
     if settings.csv.eof_behavior not in ("stop", "hold", "loop"):

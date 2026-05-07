@@ -60,7 +60,12 @@ class CsvPlaybackSource:
         if not path.exists():
             raise SystemExit(f"CSV file not found: {path}")
 
+        power_scale = _power_unit_scale(self._settings.power_unit)
         logger.info("Loading CSV data: %s", path)
+        logger.info(
+            "CSV Power column unit: %s, converting to W for PF_BASIC",
+            self._settings.power_unit,
+        )
         with path.open("r", encoding=self._settings.encoding, newline="") as f:
             reader = csv.reader(f)
             header = next(reader, None)
@@ -68,9 +73,15 @@ class CsvPlaybackSource:
                 raise SystemExit("CSV file has no header")
 
             header_norm = [_normalize_header(cell) for cell in header]
-            ts_idx = _resolve_col(header_norm, self._settings.timestamp_col, self._settings.col_base)
-            power_idx = _resolve_col(header_norm, self._settings.power_col, self._settings.col_base)
-            freq_idx = _resolve_col(header_norm, self._settings.freq_col, self._settings.col_base)
+            ts_idx = _resolve_col(
+                header_norm, self._settings.timestamp_col, self._settings.col_base
+            )
+            power_idx = _resolve_col(
+                header_norm, self._settings.power_col, self._settings.col_base
+            )
+            freq_idx = _resolve_col(
+                header_norm, self._settings.freq_col, self._settings.col_base
+            )
 
             if ts_idx is None:
                 raise SystemExit(f"Timestamp column not found: {self._settings.timestamp_col}")
@@ -112,7 +123,13 @@ class CsvPlaybackSource:
                 if power is None or freq is None:
                     continue
 
-                rows.append(PmuSample(timestamp=timestamp, power_w=power, freq_hz=freq))
+                rows.append(
+                    PmuSample(
+                        timestamp=timestamp,
+                        power_w=power * power_scale,
+                        freq_hz=freq,
+                    )
+                )
                 if self._settings.max_rows > 0 and len(rows) >= self._settings.max_rows:
                     break
 
@@ -151,6 +168,17 @@ def _parse_float(value: str) -> Optional[float]:
     return parsed if math.isfinite(parsed) else None
 
 
+def _power_unit_scale(unit: str) -> float:
+    normalized = str(unit).strip().lower()
+    if normalized == "w":
+        return 1.0
+    if normalized == "kw":
+        return 1000.0
+    if normalized == "mw":
+        return 1000000.0
+    raise SystemExit("csv.power_unit must be one of: W, kW, MW")
+
+
 def _normalize_time_input(user_input: str) -> str:
     parts = [part for part in re.split(r"[^\d]+", user_input.strip()) if part]
     if len(parts) < 3:
@@ -164,4 +192,3 @@ def _normalize_time_input(user_input: str) -> str:
     if len(parts) >= 6:
         result += f":{parts[5].zfill(2)}"
     return result
-
