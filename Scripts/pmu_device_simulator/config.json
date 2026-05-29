@@ -19,12 +19,12 @@
     "col_base": 0,
     "start_row": 0,
     "max_rows": 0,
-    "start_time": "",
+    "start_time": "2020-05-07 05:52:03",
     "source_interval_sec": 1.0,
     "eof_behavior": "stop"
   },
   "stream": {
-    "auto_start": false,
+    "auto_start": true,
     "default_period_ms": 500,
     "min_period_ms": 50,
     "max_period_ms": 60000,
