@@ -66,23 +66,25 @@ make clean
 
 ### 烧录程序
 
-**使用 pyocd (推荐)**:
+先按板上实际晶振运行切换脚本，再编译。详细配置、备份、下载和验收步骤见
+**[STM32 / GD32 烧录说明](Docs/FLASHING.md)**。
 
 ```bash
-pyocd flash --erase chip --target GD32F470VI build/cubemx_gd32.elf
+# 8MHz 开发板；12MHz 板改用参数 12
+python3 Scripts/switch_hse_freq.py 8
+make clean && make
 ```
 
-**使用 OpenOCD**:
+**STM32F429VIT6 + ST-LINK**：
 
 ```bash
-openocd -f cmsis-dap.cfg -f stm32f4xx.cfg \
-  -c init \
-  -c "reset halt" \
-  -c "wait_halt" \
-  -c "flash write_image erase build/cubemx_gd32.elf" \
-  -c reset \
-  -c shutdown
+openocd -f ./stlink.cfg -c "transport select hla_swd" \
+  -f ./stm32f4x.cfg \
+  -c "program build/cubemx_gd32.elf verify reset exit"
 ```
+
+**GD32F470 + CMSIS-DAP**：见详细说明选择 `gd32f4xx.cfg` 原生驱动路线或经过实机验证的
+`stm32f4xx.cfg` 历史兼容路线。注意 `stm32f4x.cfg` 与 `stm32f4xx.cfg` 不是同一文件。
 
 ## 项目架构
 
@@ -281,34 +283,15 @@ arm-none-eabi-size build/cubemx_gd32.elf
 
 ### 烧录方法
 
-#### 方法 1: pyocd (推荐)
+统一以 **[STM32 / GD32 烧录说明](Docs/FLASHING.md)** 为准，包含：
 
-```bash
-# 首次设置
-pyocd pack update
-pyocd pack install GD32F470VI
+- STM32 + ST-LINK：`stlink.cfg + stm32f4x.cfg`，已实测连接与 Flash 探测。
+- GD32 + CMSIS-DAP：原生 `gd32f4xx.cfg` 需要 OpenOCD 包含对应 Flash 驱动；
+  本机 Homebrew OpenOCD 0.12.0 不包含此驱动。
+- GD32 历史兼容配置 `stm32f4xx.cfg` 的适用限制和 pyOCD 备选路线。
+- 调用现有 Python 脚本切换晶振、备份原固件、下载校验及硬件验收。
 
-# 烧录
-pyocd flash --erase chip --target GD32F470VI build/cubemx_gd32.elf
-
-# 调试
-pyocd gdb --target GD32F470VI
-```
-
-**pyocd pack 位置**:
-
-- Linux: `$HOME/.local/share/cmsis-pack-manager`
-- macOS: `$HOME/Library/Application Support/cmsis-pack-manager`
-- Windows: `C:\Users\$USER\AppData\cmsis-pack-manager`
-
-#### 方法 2: OpenOCD
-
-```bash
-openocd -f cmsis-dap.cfg -f stm32f4xx.cfg \
-  -c "program build/cubemx_gd32.elf verify reset exit"
-```
-
-**注意**: 使用 `stm32f4xx.cfg` 而非 `gd32f4xx.cfg` 以避免兼容性问题。
+不要只换 `.cfg` 就假设固件兼容；也不要把晶振切换前的旧产物直接下载。
 
 ## STM32-to-GD32 移植说明
 
@@ -386,7 +369,8 @@ arm-none-eabi-objdump -D build/cubemx_gd32.elf | sed -n '1,120p'
 
 1. **时钟配置**: 必须读取实际 PLL 配置（`SystemClock_Config()`），不要假设最大时钟
 2. **外设差异**: 部分 STM32 外设（SAI、高级定时器）在 GD32 上可能不存在或有差异
-3. **OpenOCD 配置**: 使用 `stm32f4xx.cfg` 而非 `gd32f4xx.cfg`（除非使用 Windows GD32EmbeddedBuilder）
+3. **OpenOCD 配置**: 按目标芯片及工具实际支持的 Flash 驱动选择，见 [烧录说明](Docs/FLASHING.md)；
+   `stm32f4x.cfg`、`stm32f4xx.cfg`、`gd32f4xx.cfg` 不可根据名称混用。
 
 ## 开发指南
 
